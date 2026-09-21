@@ -30,3 +30,6 @@ macos/.build/
 # Собирается make dmg
 Earshot.dmg
 macos/.dmg/
+
+# Подпись у каждого своя
+macos/Signing.xcconfig
