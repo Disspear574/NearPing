@@ -12,7 +12,7 @@ internal class FakeCrypto(private val marker: Byte) : Crypto {
         return ByteArray(count) { (marker + counter).toByte() }
     }
 
-    override fun newEphemeralKeyPair(): EphemeralKeyPair {
+    override fun createEphemeralKeyPair(): EphemeralKeyPair {
         val scalar = ByteArray(32) { (marker * 7 + 3).toByte() }
         return EphemeralKeyPair(privateKey = scalar, publicKey = scalar)
     }

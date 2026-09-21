@@ -100,7 +100,7 @@ class Session(
         if (bytes.size != CHALLENGE_BYTES) return fail("bad challenge length: ${bytes.size}")
         theirChallenge = bytes
 
-        val ephemeral = crypto.newEphemeralKeyPair()
+        val ephemeral = crypto.createEphemeralKeyPair()
         myEphemeral = ephemeral
         val signed = bytes + ephemeral.publicKey
         writePlain(
