@@ -4,48 +4,60 @@ import core
 
 @main
 struct EarshotApp: App {
+    /// Личность нужна при запуске, а не по первому клику: с неё начинается
+    /// анонс в Bonjour, и ждать, пока человек откроет меню, нельзя.
+    init() {
+        _ = AppleKeyStore.shared.loadOrCreate()
+    }
+
     var body: some Scene {
         MenuBarExtra("Earshot", systemImage: "bell.badge") {
-            BridgeCheckView()
+            IdentityView()
         }
         .menuBarExtraStyle(.window)
     }
 }
 
-/// Временный экран: подтверждает, что ядро на Kotlin доехало до Swift.
-/// Уезжает в Task 5, когда появится настоящий список контактов.
-private struct BridgeCheckView: View {
-    private let sampleFingerprint = Core.shared.fingerprint(
-        bytes: Data([0xA3, 0xF9, 0x2B, 0x71]).asKotlinByteArray
-    )
+/// Временный экран: своя личность и её отпечаток.
+/// Список контактов появится в Task 5, оформление — в Task 8.
+private struct IdentityView: View {
+    @State private var displayName: String = ""
+    @State private var fingerprint: String = ""
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
             Text(verbatim: "Earshot")
                 .font(.system(size: 13, weight: .semibold))
-            Text(verbatim: "protocol v\(Core.shared.protocolVersion)")
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
-            Text(verbatim: sampleFingerprint)
-                .font(.system(size: 11, design: .monospaced))
-                .foregroundStyle(.secondary)
+
+            TextField("Your name", text: $displayName)
+                .textFieldStyle(.roundedBorder)
+                .font(.system(size: 12))
+                .onSubmit { AppleKeyStore.shared.setDisplayName(name: displayName) }
+
+            HStack(spacing: 6) {
+                Text(verbatim: fingerprint)
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                Spacer(minLength: 0)
+                Text(verbatim: "v\(Core.shared.protocolVersion)")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.tertiary)
+            }
+
             Divider()
+
             Button("Quit") { NSApplication.shared.terminate(nil) }
                 .buttonStyle(.plain)
                 .font(.system(size: 12))
         }
         .padding(12)
-        .frame(width: 220, alignment: .leading)
-    }
-}
-
-extension Data {
-    /// Kotlin/Native ждёт KotlinByteArray там, где в Kotlin объявлен ByteArray.
-    var asKotlinByteArray: KotlinByteArray {
-        let out = KotlinByteArray(size: Int32(count))
-        for (index, byte) in enumerated() {
-            out.set(index: Int32(index), value: Int8(bitPattern: byte))
+        .frame(width: 240, alignment: .leading)
+        .task {
+            let identity = AppleKeyStore.shared.loadOrCreate()
+            displayName = identity.displayName
+            fingerprint = identity.fingerprint
         }
-        return out
     }
 }
