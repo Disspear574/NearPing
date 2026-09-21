@@ -7,8 +7,6 @@ options:
 settings:
   base:
     SWIFT_VERSION: "6.0"
-    CODE_SIGN_IDENTITY: "-"
-    CODE_SIGN_STYLE: Manual
     ENABLE_HARDENED_RUNTIME: YES
     MARKETING_VERSION: "0.1.0"
     CURRENT_PROJECT_VERSION: "1"
@@ -16,6 +14,10 @@ targets:
   Earshot:
     type: application
     platform: macOS
+    # Подпись живёт здесь и только здесь, вне git.
+    configFiles:
+      Debug: Signing.xcconfig
+      Release: Signing.xcconfig
     sources:
       - path: Earshot
     info:

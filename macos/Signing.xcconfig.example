@@ -1,0 +1,16 @@
+// Скопируй в Signing.xcconfig и впиши свой Team ID.
+// Сам файл Signing.xcconfig в git не попадает — чужая команда не уедет в репозиторий.
+//
+// Без Team ID сборка подписывается локально (ad-hoc): работает на своей машине,
+// но связка ключей будет спрашивать пароль после каждой пересборки.
+//
+// С Team ID подпись становится постоянной, и запрос исчезает после одного
+// «Разрешать всегда». Для этого раскомментируй две нижние строки.
+
+DEVELOPMENT_TEAM =
+CODE_SIGN_STYLE = Manual
+CODE_SIGN_IDENTITY = -
+
+// DEVELOPMENT_TEAM = XXXXXXXXXX
+// CODE_SIGN_STYLE = Automatic
+// CODE_SIGN_IDENTITY = Apple Development
