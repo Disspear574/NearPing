@@ -33,3 +33,6 @@ macos/.dmg/
 
 # Подпись у каждого своя
 macos/Signing.xcconfig
+
+# Сырой экспорт сессии: 4 МБ JSONL, читаемая расшифровка лежит рядом
+.claude/chats/raw/
