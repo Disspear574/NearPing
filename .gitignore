@@ -26,3 +26,7 @@ local.properties
 macos/Earshot.xcodeproj/
 macos/Frameworks/
 macos/.build/
+
+# Собирается make dmg
+Earshot.dmg
+macos/.dmg/
