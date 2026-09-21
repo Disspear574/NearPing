@@ -16,13 +16,23 @@ sealed interface Message {
     @SerialName("hello")
     data class Hello(val publicKey: String, val displayName: String) : Message
 
+    /** Вызов: 32 случайных байта, одноразовые. */
+    @Serializable
+    @SerialName("auth_challenge")
+    data class AuthChallenge(val challenge: String) : Message
+
     /**
-     * Челлендж-ответ. Инициатор шлёт [challenge] без подписи, отвечающий —
-     * тот же челлендж со своей подписью. Секрет на провод не попадает.
+     * Ответ на вызов: эфемерный ключ обмена и подпись над `challenge ‖ ephemeralKey`
+     * постоянным ключом личности. Подпись связывает эфемерный ключ с личностью —
+     * без неё посредник подменил бы ключ и слушал обе стороны.
      */
     @Serializable
-    @SerialName("auth")
-    data class Auth(val challenge: String, val signature: String? = null) : Message
+    @SerialName("auth_response")
+    data class AuthResponse(
+        val challenge: String,
+        val ephemeralKey: String,
+        val signature: String,
+    ) : Message
 
     @Serializable
     @SerialName("pair_request")
