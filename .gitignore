@@ -1,0 +1,23 @@
+# macOS
+.DS_Store
+
+# Xcode
+build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+*.xcworkspace/xcuserdata/
+
+# Gradle / KMP
+.gradle/
+.kotlin/
+local.properties
+**/build/
+
+# IDE
+.idea/
+*.iml
+
+# Рабочие файлы сессий, не документация
+.claude/ISSUES.md
+.claude/scratch/
