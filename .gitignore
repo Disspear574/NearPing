@@ -21,3 +21,8 @@ local.properties
 # Рабочие файлы сессий, не документация
 .claude/ISSUES.md
 .claude/scratch/
+
+# Генерируется XcodeGen и Gradle — в git не место
+macos/Earshot.xcodeproj/
+macos/Frameworks/
+macos/.build/
