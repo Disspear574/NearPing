@@ -11,7 +11,7 @@ project: core
 
 build: project
 	cd macos && xcodebuild -project Earshot.xcodeproj -scheme Earshot \
-		-configuration Debug -derivedDataPath .build build
+		-configuration Debug -derivedDataPath .build -allowProvisioningUpdates build
 
 run: build
 	open macos/.build/Build/Products/Debug/Earshot.app
@@ -20,7 +20,7 @@ run: build
 # Подпись локальная (ad-hoc): Gatekeeper на чужом маке потребует явного разрешения.
 dmg: project
 	cd macos && xcodebuild -project Earshot.xcodeproj -scheme Earshot \
-		-configuration Release -derivedDataPath .build build
+		-configuration Release -derivedDataPath .build -allowProvisioningUpdates build
 	rm -rf macos/.dmg && mkdir -p macos/.dmg
 	cp -R macos/.build/Build/Products/Release/Earshot.app macos/.dmg/
 	ln -s /Applications macos/.dmg/Applications
