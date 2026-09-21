@@ -1,6 +1,6 @@
-package app.earshot.core.wire
+package com.disspear574.earshot.core.wire
 
-import app.earshot.core.Core
+import com.disspear574.earshot.core.Core
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json

@@ -1,4 +1,4 @@
-package app.earshot.core
+package com.disspear574.earshot.core
 
 /**
  * Личность устройства. Приватная часть ключа живёт в хранилище платформы и сюда не попадает.

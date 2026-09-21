@@ -1,8 +1,8 @@
-package app.earshot.core
+package com.disspear574.earshot.core
 
-import app.earshot.core.wire.Framing
-import app.earshot.core.wire.Message
-import app.earshot.core.wire.Wire
+import com.disspear574.earshot.core.wire.Framing
+import com.disspear574.earshot.core.wire.Message
+import com.disspear574.earshot.core.wire.Wire
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse

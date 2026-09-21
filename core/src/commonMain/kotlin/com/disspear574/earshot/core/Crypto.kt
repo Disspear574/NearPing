@@ -1,4 +1,4 @@
-package app.earshot.core
+package com.disspear574.earshot.core
 
 /** Эфемерная пара X25519: живёт одно соединение и не сохраняется. */
 class EphemeralKeyPair(val privateKey: ByteArray, val publicKey: ByteArray)

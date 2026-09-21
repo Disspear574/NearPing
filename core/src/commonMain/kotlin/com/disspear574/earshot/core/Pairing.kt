@@ -1,6 +1,6 @@
-package app.earshot.core
+package com.disspear574.earshot.core
 
-import app.earshot.core.wire.Message
+import com.disspear574.earshot.core.wire.Message
 
 enum class PairingDecision { ASK_USER, ALREADY_TRUSTED }
 

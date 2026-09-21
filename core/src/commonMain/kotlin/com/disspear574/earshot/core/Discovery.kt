@@ -1,4 +1,4 @@
-package app.earshot.core
+package com.disspear574.earshot.core
 
 /**
  * TXT-запись Bonjour. Видна ВСЕМ в сети, не только контактам, поэтому несёт

@@ -1,4 +1,4 @@
-package app.earshot.core
+package com.disspear574.earshot.core
 
 object Core {
     const val protocolVersion: Int = 1

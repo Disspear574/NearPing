@@ -1,4 +1,4 @@
-package app.earshot.core
+package com.disspear574.earshot.core
 
 /** base64url без выравнивания. Свой, чтобы не тащить зависимость ради двадцати строк. */
 object Base64Url {

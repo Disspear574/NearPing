@@ -1,4 +1,4 @@
-package app.earshot.core
+package com.disspear574.earshot.core
 
 /** Сохраняется платформой. Ключ — единственное, по чему узнают пира. */
 interface PeerStorage {

@@ -9,7 +9,7 @@ import OSLog
 /// в текущее устройство вывода, то есть в те самые наушники.
 @MainActor
 final class UrgentAlert {
-    private let log = Logger(subsystem: "app.earshot.Earshot", category: "urgent")
+    private let log = Logger(subsystem: "com.disspear574.earshot", category: "urgent")
     private var panel: NSPanel?
     private var dismissTimer: Timer?
     private var sound: NSSound?

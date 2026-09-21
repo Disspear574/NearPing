@@ -1,4 +1,4 @@
-package app.earshot.core.wire
+package com.disspear574.earshot.core.wire
 
 /**
  * Поток TCP не знает границ сообщений, поэтому каждое предваряется длиной:
