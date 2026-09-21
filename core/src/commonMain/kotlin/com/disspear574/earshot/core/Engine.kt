@@ -1,7 +1,7 @@
-package app.earshot.core
+package com.disspear574.earshot.core
 
-import app.earshot.core.wire.AckState
-import app.earshot.core.wire.Message
+import com.disspear574.earshot.core.wire.AckState
+import com.disspear574.earshot.core.wire.Message
 
 interface Clock {
     fun nowEpochSeconds(): Long

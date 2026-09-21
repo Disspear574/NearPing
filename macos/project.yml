@@ -1,6 +1,6 @@
 name: Earshot
 options:
-  bundleIdPrefix: app.earshot
+  bundleIdPrefix: com.disspear574
   deploymentTarget:
     macOS: "26.0"
   createIntermediateGroups: true
@@ -35,7 +35,7 @@ targets:
         embed: false
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: app.earshot.Earshot
+        PRODUCT_BUNDLE_IDENTIFIER: com.disspear574.earshot
         FRAMEWORK_SEARCH_PATHS:
           - "$(inherited)"
           - "$(PROJECT_DIR)/Frameworks"

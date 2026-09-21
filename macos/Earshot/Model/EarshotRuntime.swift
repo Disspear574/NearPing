@@ -23,7 +23,7 @@ struct PeerRow: Identifiable, Equatable {
 final class EarshotRuntime {
     static let shared = EarshotRuntime()
 
-    private let log = Logger(subsystem: "app.earshot.Earshot", category: "runtime")
+    private let log = Logger(subsystem: "com.disspear574.earshot", category: "runtime")
 
     private(set) var peers: [PeerRow] = []
     private(set) var pendingRequests: [PeerRow] = []

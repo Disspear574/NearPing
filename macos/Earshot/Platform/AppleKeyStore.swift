@@ -9,12 +9,12 @@ import OSLog
 final class AppleKeyStore: KeyStore, Signer, @unchecked Sendable {
     static let shared = AppleKeyStore()
 
-    private static let keychainAccount = "app.earshot.identity"
-    private static let displayNameKey = "app.earshot.displayName"
+    private static let keychainAccount = "com.disspear574.earshot.identity"
+    private static let displayNameKey = "com.disspear574.earshot.displayName"
 
     private let privateKey: Curve25519.Signing.PrivateKey
 
-    private static let log = Logger(subsystem: "app.earshot.Earshot", category: "identity")
+    private static let log = Logger(subsystem: "com.disspear574.earshot", category: "identity")
 
     init() {
         let existing = Self.existingKey()

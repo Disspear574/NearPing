@@ -1,4 +1,4 @@
-package app.earshot.core.wire
+package com.disspear574.earshot.core.wire
 
 import kotlin.test.Test
 import kotlin.test.assertContentEquals

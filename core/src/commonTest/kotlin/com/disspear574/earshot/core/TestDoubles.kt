@@ -1,4 +1,4 @@
-package app.earshot.core
+package com.disspear574.earshot.core
 
 /**
  * Подделка криптографии: настоящая математика здесь не нужна, нужны те же

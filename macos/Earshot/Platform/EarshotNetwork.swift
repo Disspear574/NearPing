@@ -19,8 +19,8 @@ protocol NetworkDelegate: AnyObject {
 /// Свой последовательный поток на всё состояние: Network.framework зовёт обратно
 /// со своей очереди, а ядро трогается только с главного потока.
 final class EarshotNetwork: Transport, @unchecked Sendable {
-    private let log = Logger(subsystem: "app.earshot.Earshot", category: "network")
-    private let queue = DispatchQueue(label: "app.earshot.network")
+    private let log = Logger(subsystem: "com.disspear574.earshot", category: "network")
+    private let queue = DispatchQueue(label: "com.disspear574.earshot.network")
 
     private var listener: NWListener?
     private var browser: NWBrowser?

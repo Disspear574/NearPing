@@ -1,4 +1,4 @@
-package app.earshot.core
+package com.disspear574.earshot.core
 
 import kotlin.test.Test
 import kotlin.test.assertEquals

@@ -7,7 +7,7 @@ import OSLog
 /// Уважает «Не беспокоить» намеренно — ломать чужой фокус позволено только срочному.
 @MainActor
 final class Notifier {
-    private let log = Logger(subsystem: "app.earshot.Earshot", category: "notify")
+    private let log = Logger(subsystem: "com.disspear574.earshot", category: "notify")
     private var centerAvailable = false
 
     func requestPermission() {
