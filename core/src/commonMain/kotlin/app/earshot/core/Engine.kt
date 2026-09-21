@@ -7,11 +7,16 @@ interface Clock {
     fun nowEpochSeconds(): Long
 }
 
-/** Реализуется платформой: NWConnection на Apple, сокеты на JVM. */
+/**
+ * Реализуется платформой: NWConnection на Apple, сокеты на JVM.
+ *
+ * Адресуется идентификатором соединения, а не ключом пира: у входящего
+ * соединения ключ неизвестен до `hello`, а к одному пиру их может быть два.
+ */
 interface Transport {
-    fun connect(keyHex: String, endpoint: String)
-    fun send(keyHex: String, bytes: ByteArray)
-    fun disconnect(keyHex: String)
+    fun connect(connectionId: String, endpoint: String)
+    fun send(connectionId: String, bytes: ByteArray)
+    fun disconnect(connectionId: String)
 }
 
 /** Состояние вызова у отправителя. */
@@ -54,8 +59,11 @@ class Engine(
 ) {
     private val pairing = PairingMachine(registry)
     private val sessions = LinkedHashMap<String, Session>()
+    private val peerByConnection = LinkedHashMap<String, String>()
+    private val connectionByPeer = LinkedHashMap<String, String>()
     private val seen = LinkedHashMap<String, Peer>()
     private val endpoints = LinkedHashMap<String, String>()
+    private val dialled = LinkedHashSet<String>()
     private val pausedPeers = LinkedHashMap<String, Long>()
     private val outgoingCalls = LinkedHashMap<String, String>()
 
@@ -80,43 +88,65 @@ class Engine(
         if (peer.publicKey.contentEquals(identity.publicKey)) return
         seen[peer.keyHex] = peer
         endpoints[peer.keyHex] = endpoint
-        if (!sessions.containsKey(peer.keyHex)) transport.connect(peer.keyHex, endpoint)
+        // Звонит только тот, чей ключ меньше. Иначе обе стороны находят друг друга
+        // одновременно, обе набирают, и получается два соединения на одну пару.
+        val shouldDial = compareKeys(identity.publicKey, peer.publicKey) < 0
+        if (shouldDial && !connectionByPeer.containsKey(peer.keyHex) && dialled.add(peer.keyHex)) {
+            transport.connect(outgoingConnectionId(peer.keyHex), endpoint)
+        }
         listener.onPeersChanged()
     }
 
     fun onPeerLost(keyHex: String) {
         seen.remove(keyHex)
         endpoints.remove(keyHex)
+        dialled.remove(keyHex)
         listener.onPeersChanged()
+    }
+
+    private fun outgoingConnectionId(keyHex: String) = "out:$keyHex"
+
+    private fun compareKeys(a: ByteArray, b: ByteArray): Int {
+        for (i in 0 until minOf(a.size, b.size)) {
+            val diff = (a[i].toInt() and 0xFF) - (b[i].toInt() and 0xFF)
+            if (diff != 0) return diff
+        }
+        return a.size - b.size
     }
 
     // MARK: транспорт
 
-    fun onConnected(keyHex: String) {
+    fun onConnected(connectionId: String) {
         val session = Session(
             identity = identity,
             signer = signer,
             crypto = crypto,
             registry = registry,
-            send = { bytes -> transport.send(keyHex, bytes) },
-            events = Events(keyHex),
+            send = { bytes -> transport.send(connectionId, bytes) },
+            events = Events(connectionId),
         )
-        sessions[keyHex] = session
+        sessions[connectionId] = session
         session.start()
     }
 
-    fun onBytes(keyHex: String, chunk: ByteArray) {
-        sessions[keyHex]?.onBytes(chunk)
+    fun onBytes(connectionId: String, chunk: ByteArray) {
+        sessions[connectionId]?.onBytes(chunk)
     }
 
-    fun onDisconnected(keyHex: String) {
-        sessions.remove(keyHex)
-        pausedPeers.remove(keyHex)
-        // Вызовы, не получившие подтверждения, повисли бы навсегда.
-        outgoingCalls.entries.filter { it.value == keyHex }.forEach { (callId, _) ->
-            listener.onCallState(keyHex, callId, CallState.FAILED)
+    fun onDisconnected(connectionId: String) {
+        sessions.remove(connectionId)
+        val keyHex = peerByConnection.remove(connectionId)
+        if (keyHex != null) {
+            if (connectionByPeer[keyHex] == connectionId) connectionByPeer.remove(keyHex)
+            dialled.remove(keyHex)
+            pausedPeers.remove(keyHex)
+            // Вызовы, не получившие подтверждения, повисли бы навсегда.
+            val orphaned = outgoingCalls.filterValues { it == connectionId }.keys.toList()
+            orphaned.forEach { callId ->
+                outgoingCalls.remove(callId)
+                listener.onCallState(keyHex, callId, CallState.FAILED)
+            }
         }
-        outgoingCalls.entries.removeAll { it.value == keyHex }
         listener.onPeersChanged()
     }
 
@@ -133,7 +163,7 @@ class Engine(
                 displayName = peer?.displayName ?: Identity.FALLBACK_NAME,
                 fingerprint = peer?.fingerprint ?: "",
                 isTrusted = peer != null && registry.isTrusted(peer.publicKey),
-                isOnline = sessions[keyHex]?.isEstablished == true,
+                isOnline = connectionByPeer[keyHex]?.let { sessions[it]?.isEstablished } == true,
                 pausedUntilEpochSeconds = pausedPeers[keyHex]?.takeIf { it > clock.nowEpochSeconds() },
             )
         }
@@ -142,20 +172,20 @@ class Engine(
     fun pendingPairingRequests(): List<Peer> = pairing.pendingRequests
 
     fun requestPairing(keyHex: String) {
-        sessions[keyHex]?.sendMessage(Message.PairRequest(identity.displayName))
+        sessionFor(keyHex)?.sendMessage(Message.PairRequest(identity.displayName))
     }
 
     fun acceptPairing(keyHex: String) {
         val peer = pairing.pendingRequests.firstOrNull { it.keyHex == keyHex } ?: return
         pairing.accept(peer)
-        sessions[keyHex]?.sendMessage(Message.PairAccept)
+        sessionFor(keyHex)?.sendMessage(Message.PairAccept)
         listener.onPeersChanged()
     }
 
     fun rejectPairing(keyHex: String) {
         val peer = pairing.pendingRequests.firstOrNull { it.keyHex == keyHex } ?: return
         pairing.reject(peer)
-        sessions[keyHex]?.sendMessage(Message.PairReject)
+        sessionFor(keyHex)?.sendMessage(Message.PairReject)
         listener.onPeersChanged()
     }
 
@@ -166,19 +196,23 @@ class Engine(
 
     /** Возвращает id вызова, либо null — если отправить некому. */
     fun call(keyHex: String, urgent: Boolean): String? {
-        val session = sessions[keyHex] ?: return null
+        val connectionId = connectionByPeer[keyHex] ?: return null
+        val session = sessions[connectionId] ?: return null
         if (!registry.isTrusted(hexToPeerKey(keyHex))) return null
         val callId = "c${++callCounter}"
         if (!session.sendMessage(Message.Ping(callId, urgent))) return null
-        outgoingCalls[callId] = keyHex
+        outgoingCalls[callId] = connectionId
         listener.onCallState(keyHex, callId, CallState.SENT)
         return callId
     }
 
     /** Человек увидел вызов: закрыл баннер или уведомление. */
     fun markSeen(keyHex: String, callId: String) {
-        sessions[keyHex]?.sendMessage(Message.Ack(callId, AckState.SEEN))
+        sessionFor(keyHex)?.sendMessage(Message.Ack(callId, AckState.SEEN))
     }
+
+    private fun sessionFor(keyHex: String): Session? =
+        connectionByPeer[keyHex]?.let { sessions[it] }
 
     private fun activePauseUntil(): Long? = pausedUntil?.takeIf { it > clock.nowEpochSeconds() }
 
@@ -187,10 +221,21 @@ class Engine(
             keyHex.substring(i * 2, i * 2 + 2).toInt(16).toByte()
         }
 
-    private inner class Events(private val keyHex: String) : SessionEvents {
+    private inner class Events(private val connectionId: String) : SessionEvents {
+        private val keyHex: String get() = peerByConnection[connectionId] ?: ""
+
         override fun onEstablished(peer: Peer) {
+            // Оба конца могли набрать одновременно: второе соединение лишнее.
+            val existing = connectionByPeer[peer.keyHex]
+            if (existing != null && existing != connectionId && sessions[existing]?.isEstablished == true) {
+                transport.disconnect(connectionId)
+                sessions.remove(connectionId)
+                return
+            }
             seen[peer.keyHex] = peer
-            sessions[keyHex]?.sendMessage(Message.Presence(activePauseUntil()))
+            peerByConnection[connectionId] = peer.keyHex
+            connectionByPeer[peer.keyHex] = connectionId
+            sessions[connectionId]?.sendMessage(Message.Presence(activePauseUntil()))
             listener.onPeersChanged()
         }
 
@@ -226,14 +271,14 @@ class Engine(
         }
 
         override fun onFailed(reason: String) {
-            transport.disconnect(keyHex)
-            onDisconnected(keyHex)
+            transport.disconnect(connectionId)
+            onDisconnected(connectionId)
         }
 
         private fun onPing(peer: Peer, ping: Message.Ping) {
             // Подтверждение доставки уходит всегда: отправитель должен различать
             // «не дошло» и «дошло, но человек закрылся паузой».
-            sessions[keyHex]?.sendMessage(Message.Ack(ping.id, AckState.DELIVERED))
+            sessions[connectionId]?.sendMessage(Message.Ack(ping.id, AckState.DELIVERED))
             // Пауза глушит оба типа вызова, включая срочный. Иначе паузе нет доверия.
             if (isPaused) return
             listener.onIncomingCall(peer, ping.id, ping.urgent)

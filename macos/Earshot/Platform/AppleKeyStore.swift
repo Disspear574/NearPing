@@ -2,7 +2,7 @@ import Foundation
 import CryptoKit
 import Security
 import OSLog
-import core
+@preconcurrency import core
 
 /// Личность устройства на Apple: постоянный ключ подписи Curve25519 в Keychain.
 /// Приватная часть наружу не отдаётся — подписывает `sign(data:)`, и только.

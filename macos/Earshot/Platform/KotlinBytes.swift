@@ -1,5 +1,5 @@
 import Foundation
-import core
+@preconcurrency import core
 
 /// Kotlin/Native объявляет ByteArray, Swift видит KotlinByteArray — мостим в обе стороны.
 extension Data {

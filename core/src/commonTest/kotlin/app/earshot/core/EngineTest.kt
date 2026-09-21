@@ -39,10 +39,15 @@ private class TwoMachines {
     val bEvents = Recorded()
     private val queue = ArrayDeque<Triple<Boolean, String, ByteArray>>()
 
+    val aDials = mutableListOf<String>()
+    val bDials = mutableListOf<String>()
+
     private inner class Wire(private val toB: Boolean) : Transport {
-        override fun connect(keyHex: String, endpoint: String) {}
-        override fun send(keyHex: String, bytes: ByteArray) { queue += Triple(toB, keyHex, bytes) }
-        override fun disconnect(keyHex: String) {}
+        override fun connect(connectionId: String, endpoint: String) {
+            if (toB) aDials += connectionId else bDials += connectionId
+        }
+        override fun send(connectionId: String, bytes: ByteArray) { queue += Triple(toB, connectionId, bytes) }
+        override fun disconnect(connectionId: String) {}
     }
 
     val a = Engine(Identity(aKey, "Аня"), FakeSigner(aKey), FakeCrypto(1),
@@ -50,11 +55,15 @@ private class TwoMachines {
     val b = Engine(Identity(bKey, "Борис"), FakeSigner(bKey), FakeCrypto(2),
         PeerRegistry(MemoryPeers()), Wire(toB = false), clock, bEvents)
 
+    // Аня набирает (её ключ меньше), Борис принимает входящее.
+    val aConn = "out:$bHex"
+    val bConn = "in:1"
+
     fun connect() {
         a.onPeerFound(Peer(bKey, "Борис"), "b:1")
         b.onPeerFound(Peer(aKey, "Аня"), "a:1")
-        a.onConnected(bHex)
-        b.onConnected(aHex)
+        a.onConnected(aConn)
+        b.onConnected(bConn)
         pump()
     }
 
@@ -62,7 +71,7 @@ private class TwoMachines {
         var guard = 0
         while (queue.isNotEmpty() && guard++ < 200) {
             val (toB, _, bytes) = queue.removeFirst()
-            if (toB) b.onBytes(aHex, bytes) else a.onBytes(bHex, bytes)
+            if (toB) b.onBytes(bConn, bytes) else a.onBytes(aConn, bytes)
         }
     }
 
@@ -79,6 +88,23 @@ class EngineConnectionTest {
         net.connect()
         assertTrue(net.a.peers().single { it.keyHex == net.bHex }.isOnline)
         assertTrue(net.b.peers().single { it.keyHex == net.aHex }.isOnline)
+    }
+
+    @Test
+    fun onlyTheSmallerKeyDials() {
+        val net = TwoMachines()
+        net.a.onPeerFound(Peer(net.bKey, "Борис"), "b:1")
+        net.b.onPeerFound(Peer(net.aKey, "Аня"), "a:1")
+        // Иначе обе стороны набирают одновременно и держат два соединения на пару.
+        assertEquals(listOf("out:${net.bHex}"), net.aDials)
+        assertEquals(emptyList(), net.bDials)
+    }
+
+    @Test
+    fun repeatedDiscoveryDoesNotDialTwice() {
+        val net = TwoMachines()
+        repeat(3) { net.a.onPeerFound(Peer(net.bKey, "Борис"), "b:1") }
+        assertEquals(1, net.aDials.size)
     }
 
     @Test
@@ -122,7 +148,7 @@ class EngineConnectionTest {
         net.connect()
         net.pairThem()
         net.a.call(net.bHex, urgent = false)
-        net.a.onDisconnected(net.bHex)
+        net.a.onDisconnected(net.aConn)
         assertTrue(net.aEvents.callStates.any { it.second == CallState.FAILED })
     }
 }

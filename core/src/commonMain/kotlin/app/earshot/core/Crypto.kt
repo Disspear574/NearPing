@@ -9,7 +9,7 @@ class EphemeralKeyPair(val privateKey: ByteArray, val publicKey: ByteArray)
  */
 interface Crypto {
     fun randomBytes(count: Int): ByteArray
-    fun newEphemeralKeyPair(): EphemeralKeyPair
+    fun createEphemeralKeyPair(): EphemeralKeyPair
     fun sharedSecret(privateKey: ByteArray, peerPublicKey: ByteArray): ByteArray
     fun deriveSessionKey(sharedSecret: ByteArray, salt: ByteArray): ByteArray
     fun seal(key: ByteArray, plaintext: ByteArray): ByteArray
