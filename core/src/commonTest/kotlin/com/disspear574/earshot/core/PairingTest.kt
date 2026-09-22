@@ -69,15 +69,15 @@ class PairingMachineTest {
     }
 
     @Test
-    fun incomingRequestFromTrustedPeerIsNoop() {
+    fun incomingRequestFromTrustedPeerAsksAgain() {
         val registry = PeerRegistry(MemoryStorage())
         registry.trust(peer(1, "Дима"))
         val machine = PairingMachine(registry)
         assertEquals(
-            PairingDecision.ALREADY_TRUSTED,
+            PairingDecision.ASK_USER,
             machine.onIncoming(Message.PairRequest("Дима"), peer(1, "Дима")),
         )
-        assertEquals(emptyList(), machine.pendingRequests.map { it.displayName })
+        assertEquals(listOf("Дима"), machine.pendingRequests.map { it.displayName })
     }
 
     @Test

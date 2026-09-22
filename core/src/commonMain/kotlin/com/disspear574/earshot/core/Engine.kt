@@ -66,7 +66,17 @@ class Engine(
     private val dialled = LinkedHashSet<String>()
     private val pausedPeers = LinkedHashMap<String, Long>()
     private val outgoingCalls = LinkedHashMap<String, String>()
+    // Кому мы сами отправили запрос. Согласие принимается только от них: иначе
+    // любой в сети прислал бы `pair_accept` без запроса и попал бы в доверенные.
+    // Список живёт в памяти и перезапуск не переживает — это осознанно: после
+    // перезапуска человек жмёт «Добавить» ещё раз, и той стороне задаётся вопрос
+    // повторно — у неё должно быть право отказать (EngineRepairPairingTest).
+    private val outgoingPairings = LinkedHashSet<String>()
 
+    // Only peers advertising heartbeat support get a silence deadline.
+    private val lastHeard = LinkedHashMap<String, Long>()
+    private val handshakeStarted = LinkedHashMap<String, Long>()
+    private var lastHeartbeatSent = clock.nowEpochSeconds()
     private var pausedUntil: Long? = null
     private var callCounter = 0L
 
@@ -74,10 +84,25 @@ class Engine(
     val myDisplayName: String get() = identity.displayName
 
     val isPaused: Boolean get() = activePauseUntil() != null
+    val pausedUntilEpochSeconds: Long? get() = activePauseUntil()
+
+    /**
+     * Новое имя уходит в `hello`, а `hello` шлётся только при установке соединения,
+     * поэтому живые сессии рвутся и переподнимаются. Доверие, запросы на спаривание,
+     * лимиты и пауза остаются на месте — пересоздавать движок не нужно.
+     */
+    fun rename(displayName: String) {
+        identity.displayName = displayName
+        sessions.keys.toList().forEach { connectionId ->
+            transport.disconnect(connectionId)
+            onDisconnected(connectionId)
+        }
+        listener.onPeersChanged()
+    }
 
     fun pauseUntil(epochSeconds: Long?) {
         pausedUntil = epochSeconds
-        val presence = Message.Presence(activePauseUntil())
+        val presence = Message.Presence(activePauseUntil(), heartbeat = true)
         sessions.values.forEach { it.sendMessage(presence) }
         listener.onPeersChanged()
     }
@@ -95,6 +120,32 @@ class Engine(
             transport.connect(outgoingConnectionId(peer.keyHex), endpoint)
         }
         listener.onPeersChanged()
+    }
+
+    /** Called by platform timers; never starts a second dial while one is pending. */
+    fun retryConnections() {
+        seen.values.toList().forEach { peer ->
+            endpoints[peer.keyHex]?.let { onPeerFound(peer, it) }
+        }
+    }
+
+    /** Called once a second by both platforms. Presence never triggers a user alert. */
+    fun tick() {
+        val now = clock.nowEpochSeconds()
+        // A clock correction must not leave deadlines far in the future.
+        lastHeard.keys.toList().forEach { if (lastHeard.getValue(it) > now) lastHeard[it] = now }
+        handshakeStarted.keys.toList().forEach { if (handshakeStarted.getValue(it) > now) handshakeStarted[it] = now }
+        val expired = (lastHeard.filterValues { now - it >= 12 }.keys +
+            handshakeStarted.filterValues { now - it >= 12 }.keys).toSet()
+        expired.forEach { id ->
+            transport.disconnect(id)
+            onDisconnected(id)
+        }
+        if (now < lastHeartbeatSent || now - lastHeartbeatSent >= 3) {
+            lastHeartbeatSent = now
+            val presence = Message.Presence(activePauseUntil(), heartbeat = true)
+            sessions.values.toList().filter { it.isEstablished }.forEach { it.sendMessage(presence) }
+        }
     }
 
     fun onPeerLost(keyHex: String) {
@@ -126,6 +177,7 @@ class Engine(
             events = Events(connectionId),
         )
         sessions[connectionId] = session
+        handshakeStarted[connectionId] = clock.nowEpochSeconds()
         session.start()
     }
 
@@ -135,6 +187,10 @@ class Engine(
 
     fun onDisconnected(connectionId: String) {
         sessions.remove(connectionId)
+        lastHeard.remove(connectionId)
+        handshakeStarted.remove(connectionId)
+        // A failed TCP connection has no authenticated peer mapping yet.
+        if (connectionId.startsWith("out:")) dialled.remove(connectionId.removePrefix("out:"))
         val keyHex = peerByConnection.remove(connectionId)
         if (keyHex != null) {
             if (connectionByPeer[keyHex] == connectionId) connectionByPeer.remove(keyHex)
@@ -172,7 +228,9 @@ class Engine(
     fun pendingPairingRequests(): List<Peer> = pairing.pendingRequests
 
     fun requestPairing(keyHex: String) {
-        sessionFor(keyHex)?.sendMessage(Message.PairRequest(identity.displayName))
+        val session = sessionFor(keyHex) ?: return
+        outgoingPairings.add(keyHex)
+        if (!session.sendMessage(Message.PairRequest(identity.displayName))) outgoingPairings.remove(keyHex)
     }
 
     fun acceptPairing(keyHex: String) {
@@ -190,17 +248,27 @@ class Engine(
     }
 
     fun forget(keyHex: String) {
+        outgoingPairings.remove(keyHex)
+        pairing.clear(keyHex)
         registry.forget(hexToPeerKey(keyHex))
         listener.onPeersChanged()
     }
 
     /** Возвращает id вызова, либо null — если отправить некому. */
+    private val pingLimiter = PingLimiter()
+    private val incomingLimiter = PingLimiter()
+
+    fun callCooldownSeconds(keyHex: String, urgent: Boolean): Long =
+        pingLimiter.remaining(keyHex, urgent, clock.nowEpochSeconds())
+
     fun call(keyHex: String, urgent: Boolean): String? {
+        if (callCooldownSeconds(keyHex, urgent) > 0) return null
         val connectionId = connectionByPeer[keyHex] ?: return null
         val session = sessions[connectionId] ?: return null
         if (!registry.isTrusted(hexToPeerKey(keyHex))) return null
         val callId = "c${++callCounter}"
         if (!session.sendMessage(Message.Ping(callId, urgent))) return null
+        pingLimiter.record(keyHex, urgent, clock.nowEpochSeconds())
         outgoingCalls[callId] = connectionId
         listener.onCallState(keyHex, callId, CallState.SENT)
         return callId
@@ -225,6 +293,7 @@ class Engine(
         private val keyHex: String get() = peerByConnection[connectionId] ?: ""
 
         override fun onEstablished(peer: Peer) {
+            handshakeStarted.remove(connectionId)
             // Оба конца могли набрать одновременно: второе соединение лишнее.
             val existing = connectionByPeer[peer.keyHex]
             if (existing != null && existing != connectionId && sessions[existing]?.isEstablished == true) {
@@ -232,26 +301,40 @@ class Engine(
                 sessions.remove(connectionId)
                 return
             }
+            // Имя обновляем только после проверки ключа, а не из открытого Bonjour TXT.
+            if (registry.isTrusted(peer.publicKey)) registry.trust(peer)
             seen[peer.keyHex] = peer
             peerByConnection[connectionId] = peer.keyHex
             connectionByPeer[peer.keyHex] = connectionId
-            sessions[connectionId]?.sendMessage(Message.Presence(activePauseUntil()))
+            sessions[connectionId]?.sendMessage(Message.Presence(activePauseUntil(), heartbeat = true))
             listener.onPeersChanged()
         }
 
         override fun onMessage(peer: Peer, message: Message) {
+            if (lastHeard.containsKey(connectionId) || message is Message.Presence && message.heartbeat) {
+                lastHeard[connectionId] = clock.nowEpochSeconds()
+            }
             when (message) {
                 is Message.PairRequest ->
+                    // Спрашиваем даже того, кому уже доверяем: та сторона могла нас
+                    // удалить и просит пару заново — у человека должно быть право
+                    // отказать (тесты EngineRepairPairingTest).
                     if (pairing.onIncoming(message, peer) == PairingDecision.ASK_USER) {
                         listener.onPairingRequest(peer)
                     }
 
                 is Message.PairAccept -> {
-                    registry.trust(peer)
-                    listener.onPeersChanged()
+                    // Только в ответ на наш запрос; запоздалое согласие после того,
+                    // как мы сами удалили человека, тоже отбрасывается.
+                    if (outgoingPairings.remove(peer.keyHex)) {
+                        registry.trust(peer)
+                        listener.onPeersChanged()
+                    }
                 }
 
-                is Message.PairReject -> listener.onPairingRejected(peer)
+                is Message.PairReject -> {
+                    if (outgoingPairings.remove(peer.keyHex)) listener.onPairingRejected(peer)
+                }
 
                 is Message.Ping -> onPing(peer, message)
 
@@ -281,6 +364,9 @@ class Engine(
             sessions[connectionId]?.sendMessage(Message.Ack(ping.id, AckState.DELIVERED))
             // Пауза глушит оба типа вызова, включая срочный. Иначе паузе нет доверия.
             if (isPaused) return
+            val now = clock.nowEpochSeconds()
+            if (incomingLimiter.remaining(peer.keyHex, ping.urgent, now) > 0) return
+            incomingLimiter.record(peer.keyHex, ping.urgent, now)
             listener.onIncomingCall(peer, ping.id, ping.urgent)
         }
     }
