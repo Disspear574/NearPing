@@ -11,6 +11,9 @@ struct PeerRow: Identifiable, Equatable {
     let isTrusted: Bool
     let isOnline: Bool
     let pausedUntil: Date?
+    var cooldown: Int = 0
+    var urgentCooldown: Int = 0
+    var timeoutHint = false
     var status: String?
     var statusKind: StatusKind = .neutral
 
@@ -27,6 +30,7 @@ final class EarshotRuntime {
 
     private(set) var peers: [PeerRow] = []
     private(set) var pendingRequests: [PeerRow] = []
+    private(set) var requestedPairings: Set<String> = []
     private(set) var myFingerprint: String = ""
     var myDisplayName: String = ""
     private(set) var pausedUntil: Date?
@@ -34,8 +38,11 @@ final class EarshotRuntime {
     private(set) var localNetworkDenied = false
 
     private let keyStore = AppleKeyStore.shared
-    private let network = EarshotNetwork()
-    private let notifier = Notifier()
+    private var network = EarshotNetwork()
+    let notifier = Notifier()
+    private var ticker: Task<Void, Never>?
+    private var timeoutPeers: Set<String> = []
+    private var retryTicks = 0
     private let urgent = UrgentAlert()
     private var engine: Engine?
     // Сеть держит делегата слабо — сильная ссылка живёт здесь, иначе он умрёт сразу.
@@ -48,6 +55,19 @@ final class EarshotRuntime {
     func start() {
         guard !started else { return }
         started = true
+        if ticker == nil {
+            ticker = Task { [weak self] in
+                while !Task.isCancelled {
+                    try? await Task.sleep(for: .seconds(1))
+                    guard let self, !Task.isCancelled else { return }
+                    if let until = self.pausedUntil, until <= Date() { self.pause(minutes: nil) }
+                    self.engine?.tick()
+                    self.retryTicks += 1
+                    if self.retryTicks % 5 == 0 { self.engine?.retryConnections() }
+                    self.refresh()
+                }
+            }
+        }
         let identity = keyStore.loadOrCreate()
         myFingerprint = identity.fingerprint
         myDisplayName = identity.displayName
@@ -74,31 +94,44 @@ final class EarshotRuntime {
     // MARK: действия пользователя
 
     func rename(to name: String) {
-        keyStore.setDisplayName(name: name)
-        myDisplayName = name
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, trimmed != myDisplayName else { return }
+        keyStore.setDisplayName(name: trimmed)
+        // Имя едет в hello и в TXT-запись. Ядро само рвёт и переподнимает сессии,
+        // а доверие, входящие запросы, лимиты и пауза остаются на месте —
+        // пересоздавать движок и сеть незачем, раньше это теряло чужие запросы.
+        engine?.rename(displayName: trimmed)
+        myDisplayName = engine?.myDisplayName ?? trimmed
+        network.retryDiscovery()
+        refresh()
     }
 
     func call(_ row: PeerRow, urgent isUrgent: Bool) {
+        guard (engine?.callCooldownSeconds(keyHex: row.id, urgent: isUrgent) ?? 0) == 0 else { return }
         guard let id = engine?.call(keyHex: row.id, urgent: isUrgent) else {
             setStatus(row.id, String(localized: "not delivered"), .failed)
             return
         }
+        if !isUrgent, (engine?.callCooldownSeconds(keyHex: row.id, urgent: false) ?? 0) > 3 { timeoutPeers.insert(row.id) }
         setStatus(row.id, String(localized: "sent"), .neutral)
         log.notice("call \(id, privacy: .public) urgent=\(isUrgent)")
     }
 
     func requestPairing(_ row: PeerRow) {
+        guard !requestedPairings.contains(row.id) else { return }
+        requestedPairings.insert(row.id)
         engine?.requestPairing(keyHex: row.id)
         setStatus(row.id, String(localized: "request sent"), .paused)
     }
 
     func acceptPairing(_ row: PeerRow) { engine?.acceptPairing(keyHex: row.id); refresh() }
     func rejectPairing(_ row: PeerRow) { engine?.rejectPairing(keyHex: row.id); refresh() }
-    func forget(_ row: PeerRow) { engine?.forget(keyHex: row.id); refresh() }
+    func forget(_ row: PeerRow) { callStatuses.removeValue(forKey: row.id); requestedPairings.remove(row.id); engine?.forget(keyHex: row.id); refresh() }
 
     func pause(minutes: Int?) {
         guard let engine else { return }
         if let minutes {
+            guard (1...10080).contains(minutes) else { return }
             let until = Date().addingTimeInterval(TimeInterval(minutes * 60))
             pausedUntil = until
             engine.pauseUntil(epochSeconds: KotlinLong(value: Int64(until.timeIntervalSince1970)))
@@ -107,6 +140,11 @@ final class EarshotRuntime {
             engine.pauseUntil(epochSeconds: nil)
         }
         refresh()
+    }
+
+    func refreshPermissions() {
+        Task { await notifier.refreshPermission() }
+        if localNetworkDenied { network.retryDiscovery() }
     }
 
     // MARK: состояние
@@ -122,6 +160,15 @@ final class EarshotRuntime {
                 isOnline: view.isOnline,
                 pausedUntil: view.pausedUntilEpochSeconds.map { Date(timeIntervalSince1970: TimeInterval(truncating: $0)) }
             )
+            row.cooldown = Int(engine.callCooldownSeconds(keyHex: view.keyHex, urgent: false))
+            row.urgentCooldown = Int(engine.callCooldownSeconds(keyHex: view.keyHex, urgent: true))
+            if row.cooldown == 0 { timeoutPeers.remove(view.keyHex) }
+            row.timeoutHint = timeoutPeers.contains(view.keyHex)
+            if view.isTrusted { requestedPairings.remove(view.keyHex) }
+            if requestedPairings.contains(view.keyHex) {
+                row.status = String(localized: "request sent")
+                row.statusKind = .paused
+            }
             if let status = callStatuses[view.keyHex] {
                 row.status = status.0
                 row.statusKind = status.1
@@ -155,14 +202,12 @@ final class EarshotRuntime {
     }
 
     fileprivate func handleIncoming(peer: Peer, callId: String, isUrgent: Bool) {
-        if isUrgent {
-            urgent.show(callerName: peer.displayName) { [weak self] in
-                self?.engine?.markSeen(keyHex: peer.keyHex, callId: callId)
-            }
-        } else {
-            notifier.ordinaryCall(from: peer.displayName)
-            engine?.markSeen(keyHex: peer.keyHex, callId: callId)
+        urgent.show(callerName: peer.displayName, isUrgent: isUrgent) { [weak self] in
+            self?.engine?.markSeen(keyHex: peer.keyHex, callId: callId)
         }
+        // Обычный Ping остаётся в истории системных уведомлений, но его звук
+        // контролирует плашка, чтобы кнопка «Стоп» останавливала всё.
+        if !isUrgent { notifier.ordinaryCall(from: peer.displayName, playSound: false) }
     }
 
     // MARK: мосты
@@ -184,6 +229,7 @@ final class EarshotRuntime {
         }
 
         func onPairingRejected(peer: Peer) {
+            owner.requestedPairings.remove(peer.keyHex)
             owner.setStatus(peer.keyHex, String(localized: "declined"), .failed)
         }
 
@@ -225,6 +271,8 @@ final class EarshotRuntime {
         func networkDisconnected(connectionId: String) {
             owner.engine?.onDisconnected(connectionId: connectionId)
         }
+
+        func networkLocalNetworkReady() { owner.localNetworkDenied = false }
 
         func networkLocalNetworkDenied() {
             owner.localNetworkDenied = true

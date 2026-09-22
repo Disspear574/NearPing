@@ -2,20 +2,22 @@ import SwiftUI
 
 /// Строка человека в списке.
 ///
-/// Обе кнопки видимые и подписанные: раньше вызов делался кликом по строке,
-/// а об этом ниоткуда нельзя было догадаться.
+/// Ping — основное действие; срочный вызов спрятан в меню и требует удержания.
 struct PeerRowView: View {
     let row: PeerRow
     let onCall: () -> Void
     let onUrgent: () -> Void
+    let onRemove: () -> Void
 
     @State private var hovered = false
-    private var accent: Color { SystemAccent.shared.color }
+    @State private var showingUrgent = false
+    private var accent: Color { Tokens.Palette.accent }
 
     var body: some View {
-        HStack(spacing: 8) {
-            Circle()
-                .fill(Color.primary.opacity(0.12))
+        VStack(alignment: .leading, spacing: 4) {
+        HStack(spacing: 6) {
+            RoundedRectangle(cornerRadius: 8)
+                .fill(Tokens.Palette.surface)
                 .overlay(
                     Text(initials)
                         .font(.system(size: 11, weight: .semibold))
@@ -30,34 +32,65 @@ struct PeerRowView: View {
                     .foregroundStyle(Tokens.Palette.primary)
                     .lineLimit(1)
                     .truncationMode(.tail)
-                Text(subtitle)
+                HStack(spacing: 5) {
+                    statusDot
+                    Text(subtitle)
                     .font(Tokens.Font.caption)
                     .foregroundStyle(subtitleColor)
                     .lineLimit(1)
                     .truncationMode(.tail)
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .layoutPriority(1)
 
-            statusDot
+
+            Menu {
+                Button(row.urgentCooldown > 0 ? String(localized: "Urgent Ping") + " · \(row.urgentCooldown)s" : String(localized: "Urgent Ping")) { showingUrgent = true }
+                    .disabled(!canUrgent)
+                Divider()
+                Button(String(localized: "Remove contact"), role: .destructive, action: onRemove)
+            } label: { Image(systemName: "ellipsis").frame(width: 20, height: 30) }
+            .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
+            .accessibilityLabel(String(localized: "Contact actions"))
+            .popover(isPresented: $showingUrgent) {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text(String(localized: "Urgent Ping")).font(Tokens.Font.nameStrong)
+                    Text(row.displayName).font(Tokens.Font.name).lineLimit(2).truncationMode(.tail)
+                    HStack(spacing: 12) {
+                        HoldButton(
+                            isEnabled: canUrgent,
+                            accessibilityText: String(localized: "Urgent call to \(row.displayName), hold to send")
+                        ) {
+                            guard canUrgent else { return }
+                            onUrgent()
+                            showingUrgent = false
+                        }
+                        Text(String(localized: "Hold ! for an urgent call"))
+                            .font(Tokens.Font.caption).fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                .padding(16).frame(width: 240)
+                .foregroundStyle(Tokens.Palette.primary).background(Tokens.Palette.background)
+            }
 
             Button(action: onCall) {
-                Text(String(localized: "Call"))
-                    .font(.system(size: 11, weight: .medium))
-                    .padding(.horizontal, 9)
-                    .padding(.vertical, 4)
+                Text(row.cooldown > 0 ? "\(row.cooldown)s" : String(localized: "Ping"))
+                    .font(.system(size: 13, weight: .semibold))
+                    .frame(width: 62, height: 30)
             }
-            .buttonStyle(.bordered)
-            .controlSize(.small)
+            .buttonStyle(.borderedProminent)
+            .tint(accent)
+            .controlSize(.regular)
+            .fixedSize()
             .disabled(!canCall)
             .help(String(localized: "Send a normal call"))
-
-            HoldButton(
-                isEnabled: canUrgent,
-                accessibilityText: String(localized: "Urgent call to \(row.displayName), hold to send"),
-                onFire: onUrgent
-            )
-            .help(String(localized: "Hold for an urgent call"))
+        }
+        if row.timeoutHint {
+            Text(String(localized: "Too many pings. If urgent, use Urgent Ping in the contact menu."))
+                .font(Tokens.Font.caption).foregroundStyle(Tokens.Palette.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 5)
@@ -70,8 +103,9 @@ struct PeerRowView: View {
         .onHover { hovered = $0 }
     }
 
-    private var canCall: Bool { row.isTrusted && row.isOnline && row.pausedUntil == nil }
-    private var canUrgent: Bool { canCall }
+    private var reachable: Bool { row.isTrusted && row.isOnline && row.pausedUntil == nil }
+    private var canCall: Bool { reachable && row.cooldown == 0 }
+    private var canUrgent: Bool { reachable && row.urgentCooldown == 0 }
 
     private var subtitle: String {
         if let status = row.status { return status }
@@ -98,7 +132,7 @@ struct PeerRowView: View {
     /// залитый кружок и полый всё ещё различимы.
     @ViewBuilder private var statusDot: some View {
         if row.pausedUntil != nil {
-            Circle().fill(Tokens.Palette.paused)
+            Image(systemName: "pause.fill").font(.system(size: 8)).foregroundStyle(Tokens.Palette.paused)
                 .frame(width: Tokens.Metric.dot, height: Tokens.Metric.dot)
         } else if row.isOnline {
             Circle().fill(Tokens.Palette.online)

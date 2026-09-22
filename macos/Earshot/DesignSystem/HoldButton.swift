@@ -41,6 +41,8 @@ struct HoldButton: View {
             onPressingChanged: { pressing in pressing ? begin() : cancel() }
         )
         .disabled(!isEnabled)
+        .onDisappear { cancel() }
+        .onChange(of: isEnabled) { _, enabled in if !enabled { cancel() } }
     }
 
     private func begin() {
@@ -62,6 +64,7 @@ struct HoldButton: View {
     }
 
     private func fire() {
+        guard isEnabled else { cancel(); return }
         cancel()
         onFire()
     }

@@ -1,0 +1,69 @@
+"%@ wants to add you" = "%@ хочет добавить вас";
+"1 hour" = "1 час";
+"15 minutes" = "15 минут";
+"Accept" = "Принять";
+"Add" = "Добавить";
+"Appearance" = "Оформление";
+"Available" = "На связи";
+"Back" = "Назад";
+"CONTACTS" = "КОНТАКТЫ";
+"Cancel" = "Отмена";
+"Contact actions" = "Действия с контактом";
+"Dark" = "Тёмная";
+"Decline" = "Отклонить";
+"Got it" = "Увидел";
+"Incoming Ping" = "Входящий Ping";
+"Stop" = "Стоп";
+"Hold ! for an urgent call" = "Удерживайте ! для срочного Ping";
+"Hold for an urgent call" = "Удерживайте для срочного Ping";
+"Light" = "Светлая";
+"NEARBY" = "РЯДОМ";
+"NearPing cannot see anyone until you allow it in System Settings → Privacy & Security → Local Network." = "Разрешите NearPing доступ: Системные настройки → Конфиденциальность и безопасность → Локальная сеть.";
+"No local network access" = "Нет доступа к локальной сети";
+"Nobody else on this network yet. Open NearPing on another device." = "В сети пока никого нет. Откройте NearPing на другом устройстве.";
+"Open Settings" = "Открыть настройки";
+"PAIRING REQUESTS" = "ЗАПРОСЫ";
+"Pairing request" = "Запрос на добавление";
+"Pause" = "Пауза";
+"Paused" = "На паузе";
+"Ping" = "Ping";
+"Quit" = "Выйти";
+"Remove contact" = "Удалить контакт";
+"Remove contact?" = "Удалить контакт?";
+"Resume" = "Продолжить";
+"Save" = "Сохранить";
+"Send a normal call" = "Отправить Ping";
+"Settings" = "Настройки";
+"Shown to people on your local network." = "Так вас видят люди в локальной сети.";
+"System" = "Системная";
+"Until tomorrow" = "До завтра";
+"Urgent call to %@, hold to send" = "Срочный Ping для %@, удерживайте для отправки";
+"You will need to pair again to send pings." = "Чтобы снова отправлять Ping, потребуется повторное спаривание.";
+"Your name" = "Ваше имя";
+"declined" = "Отклонено";
+"delivered" = "Доставлено";
+"not delivered" = "Не доставлено";
+"offline" = "Не в сети";
+"online" = "В сети";
+"paused until %@" = "Пауза до %@";
+"request sent" = "Запрос отправлен";
+"seen it" = "Увидел";
+"sent" = "Отправлено";
+"urgent" = "Срочно";
+"wants your attention" = "Хочет привлечь ваше внимание";
+"%@ is calling" = "%@ отправляет Ping";
+
+"Urgent Ping" = "Срочный Ping";
+"Urgent Ping is in the contact menu" = "Срочный Ping — в меню контакта";
+
+"Notifications are off" = "Уведомления выключены";
+
+"Enable notifications" = "Включить уведомления";
+
+"Pause duration" = "Длительность паузы";
+
+"Minutes" = "Минуты";
+
+"From 1 minute to 7 days" = "От 1 минуты до 7 дней";
+
+"Too many pings. If urgent, use Urgent Ping in the contact menu." = "Слишком много Ping. Если срочно — выберите «Срочный Ping» в меню контакта.";

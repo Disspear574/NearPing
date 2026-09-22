@@ -1,0 +1,69 @@
+"%@ wants to add you" = "%@ wants to add you";
+"1 hour" = "1 hour";
+"15 minutes" = "15 minutes";
+"Accept" = "Accept";
+"Add" = "Add";
+"Appearance" = "Appearance";
+"Available" = "Available";
+"Back" = "Back";
+"CONTACTS" = "CONTACTS";
+"Cancel" = "Cancel";
+"Contact actions" = "Contact actions";
+"Dark" = "Dark";
+"Decline" = "Decline";
+"Got it" = "Got it";
+"Incoming Ping" = "Incoming Ping";
+"Stop" = "Stop";
+"Hold ! for an urgent call" = "Hold ! for an urgent call";
+"Hold for an urgent call" = "Hold for an urgent call";
+"Light" = "Light";
+"NEARBY" = "NEARBY";
+"NearPing cannot see anyone until you allow it in System Settings → Privacy & Security → Local Network." = "NearPing cannot see anyone until you allow it in System Settings → Privacy & Security → Local Network.";
+"No local network access" = "No local network access";
+"Nobody else on this network yet. Open NearPing on another device." = "Nobody else on this network yet. Open NearPing on another device.";
+"Open Settings" = "Open Settings";
+"PAIRING REQUESTS" = "PAIRING REQUESTS";
+"Pairing request" = "Pairing request";
+"Pause" = "Pause";
+"Paused" = "Paused";
+"Ping" = "Ping";
+"Quit" = "Quit";
+"Remove contact" = "Remove contact";
+"Remove contact?" = "Remove contact?";
+"Resume" = "Resume";
+"Save" = "Save";
+"Send a normal call" = "Send a normal call";
+"Settings" = "Settings";
+"Shown to people on your local network." = "Shown to people on your local network.";
+"System" = "System";
+"Until tomorrow" = "Until tomorrow";
+"Urgent call to %@, hold to send" = "Urgent ping to %@, hold to send";
+"You will need to pair again to send pings." = "You will need to pair again to send pings.";
+"Your name" = "Your name";
+"declined" = "declined";
+"delivered" = "delivered";
+"not delivered" = "not delivered";
+"offline" = "offline";
+"online" = "online";
+"paused until %@" = "Paused until %@";
+"request sent" = "request sent";
+"seen it" = "seen it";
+"sent" = "sent";
+"urgent" = "urgent";
+"wants your attention" = "wants your attention";
+"%@ is calling" = "%@ is pinging you";
+
+"Urgent Ping" = "Urgent Ping";
+"Urgent Ping is in the contact menu" = "Urgent Ping is in the contact menu";
+
+"Notifications are off" = "Notifications are off";
+
+"Enable notifications" = "Enable notifications";
+
+"Pause duration" = "Pause duration";
+
+"Minutes" = "Minutes";
+
+"From 1 minute to 7 days" = "From 1 minute to 7 days";
+
+"Too many pings. If urgent, use Urgent Ping in the contact menu." = "Too many pings. If urgent, use Urgent Ping in the contact menu.";
