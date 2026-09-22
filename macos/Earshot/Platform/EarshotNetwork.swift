@@ -11,6 +11,7 @@ protocol NetworkDelegate: AnyObject {
     func networkConnected(connectionId: String)
     func networkReceived(connectionId: String, data: Data)
     func networkDisconnected(connectionId: String)
+    func networkLocalNetworkReady()
     func networkLocalNetworkDenied()
 }
 
@@ -46,6 +47,14 @@ final class EarshotNetwork: Transport, @unchecked Sendable {
         queue.async { [self] in
             self.identity = identity
             startListener(identity: identity)
+            startBrowser()
+        }
+    }
+
+    func retryDiscovery() {
+        queue.async { [self] in
+            listener?.cancel(); browser?.cancel()
+            if let identity { startListener(identity: identity) }
             startBrowser()
         }
     }
@@ -117,11 +126,20 @@ final class EarshotNetwork: Transport, @unchecked Sendable {
     /// Без разрешения на локальную сеть mDNS не работает, а сокет открывается —
     /// приложение выглядит рабочим и молчит. Отказ надо показывать человеку.
     private func reportIfUnauthorised(_ state: NWListener.State) {
-        if case .failed(let error) = state, isNoAuth(error) { announceDenial() }
+        switch state {
+        case .failed(let error), .waiting(let error): if isNoAuth(error) { announceDenial() }
+        default: break
+        }
     }
 
     private func reportIfUnauthorised(_ state: NWBrowser.State) {
-        if case .failed(let error) = state, isNoAuth(error) { announceDenial() }
+        if case .ready = state {
+            DispatchQueue.main.async { [weak self] in self?.delegate?.networkLocalNetworkReady() }
+        }
+        switch state {
+        case .failed(let error), .waiting(let error): if isNoAuth(error) { announceDenial() }
+        default: break
+        }
     }
 
     private func isNoAuth(_ error: NWError) -> Bool {
@@ -205,6 +223,7 @@ final class EarshotNetwork: Transport, @unchecked Sendable {
         connection.stateUpdateHandler = { [weak self] state in
             guard let self else { return }
             queue.async {
+                guard self.connections[id] === connection else { return }
                 switch state {
                 case .ready:
                     DispatchQueue.main.async { self.delegate?.networkConnected(connectionId: id) }
@@ -223,11 +242,13 @@ final class EarshotNetwork: Transport, @unchecked Sendable {
     private func receive(on connection: NWConnection, id: String) {
         connection.receive(minimumIncompleteLength: 1, maximumLength: 64 * 1024) { [weak self] data, _, isComplete, error in
             guard let self else { return }
+            guard self.connections[id] === connection else { return }
             if let data, !data.isEmpty {
                 DispatchQueue.main.async { self.delegate?.networkReceived(connectionId: id, data: data) }
             }
             if isComplete || error != nil {
                 queue.async {
+                    guard self.connections[id] === connection else { return }
                     self.connections.removeValue(forKey: id)?.cancel()
                     DispatchQueue.main.async { self.delegate?.networkDisconnected(connectionId: id) }
                 }

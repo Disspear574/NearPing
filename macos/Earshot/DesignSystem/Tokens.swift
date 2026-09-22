@@ -1,7 +1,7 @@
 import SwiftUI
 import AppKit
 
-/// Токены попапа. Значения из спеки `.claude/specs/2026-09-22-earshot-legibility-design.md`.
+/// Токены попапа. Значения из спеки `.claude/specs/2026-09-22-nearping-design.md`.
 ///
 /// Фон сплошной, а не материал: на прозрачном слое контраст зависит от обоев под
 /// окном, и любой зашитый оттенок рано или поздно оказывается нечитаемым. Когда фон
@@ -25,17 +25,19 @@ enum Tokens {
     }
 
     enum Palette {
-        static let background = dynamic(light: 0xF6F6F8, dark: 0x232326)
-        static let primary = dynamic(light: 0x15151A, dark: 0xF2F2F5)
-        static let secondary = dynamic(light: 0x5E5E66, dark: 0xA8A8B2)
-        static let paused = dynamic(light: 0x8A6300, dark: 0xF0C14B)
-        static let seen = dynamic(light: 0x18703F, dark: 0x5FE39A)
-        static let online = dynamic(light: 0x1E8E55, dark: 0x4ADE8A)
+        static let accent = dynamic(light: 0x4E5A40, dark: 0xB5BEA3)
+        static let surface = dynamic(light: 0xE4E7DC, dark: 0x293225)
+        static let background = dynamic(light: 0xF3F2ED, dark: 0x141A14)
+        static let primary = dynamic(light: 0x232B22, dark: 0xF0EEE5)
+        static let secondary = dynamic(light: 0x5A6254, dark: 0xB7BDB0)
+        static let paused = dynamic(light: 0x785917, dark: 0xD5BD80)
+        static let seen = dynamic(light: 0x4E5A40, dark: 0xB5BEA3)
+        static let online = dynamic(light: 0x4E5A40, dark: 0xB5BEA3)
         static let offline = dynamic(light: 0x6E6E78, dark: 0xA0A0AA)
 
         /// Системным акцентом не подменяется никогда: у человека с зелёным акцентом
         /// срочный вызов обязан остаться красным.
-        static let urgent = dynamic(light: 0xC42D18, dark: 0xFF7A5A)
+        static let urgent = dynamic(light: 0xA53F32, dark: 0xE9A092)
 
         static let separator = Color.primary.opacity(0.09)
         static let rowHover = Color.primary.opacity(0.06)
@@ -45,28 +47,6 @@ enum Tokens {
                 let isDark = appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
                 return NSColor(hex: isDark ? dark : light)
             })
-        }
-    }
-}
-
-/// Системный акцент, обновляемый на лету: человек меняет его в настройках,
-/// и приложение обязано перекраситься без перезапуска.
-@MainActor
-@Observable
-final class SystemAccent {
-    static let shared = SystemAccent()
-
-    private(set) var color: Color = Color(nsColor: .controlAccentColor)
-
-    private init() {
-        NotificationCenter.default.addObserver(
-            forName: NSNotification.Name("AppleColorPreferencesChangedNotification"),
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            MainActor.assumeIsolated {
-                self?.color = Color(nsColor: .controlAccentColor)
-            }
         }
     }
 }

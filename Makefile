@@ -14,7 +14,7 @@ build: project
 		-configuration Debug -derivedDataPath .build -allowProvisioningUpdates build
 
 run: build
-	open macos/.build/Build/Products/Debug/Earshot.app
+	open macos/.build/Build/Products/Debug/NearPing.app
 
 # Release-сборка и образ для переноса на другую машину.
 # Подпись локальная (ad-hoc): Gatekeeper на чужом маке потребует явного разрешения.
@@ -22,13 +22,13 @@ dmg: project
 	cd macos && xcodebuild -project Earshot.xcodeproj -scheme Earshot \
 		-configuration Release -derivedDataPath .build -allowProvisioningUpdates build
 	rm -rf macos/.dmg && mkdir -p macos/.dmg
-	cp -R macos/.build/Build/Products/Release/Earshot.app macos/.dmg/
+	cp -R macos/.build/Build/Products/Release/NearPing.app macos/.dmg/
 	ln -s /Applications macos/.dmg/Applications
-	rm -f Earshot.dmg
-	hdiutil create -volname Earshot -srcfolder macos/.dmg -ov -format UDZO Earshot.dmg
+	rm -f NearPing.dmg
+	hdiutil create -volname NearPing -srcfolder macos/.dmg -ov -format UDZO NearPing.dmg
 	rm -rf macos/.dmg
-	@echo "готово: Earshot.dmg"
+	@echo "готово: NearPing.dmg"
 
 clean:
 	./gradlew clean
-	rm -rf macos/.build macos/.dmg macos/Earshot.xcodeproj macos/Frameworks Earshot.dmg
+	rm -rf macos/.build macos/.dmg macos/Earshot.xcodeproj macos/Frameworks NearPing.dmg

@@ -1,10 +1,12 @@
 import SwiftUI
 
-/// Баннер срочного вызова. Живёт в отдельном окне поверх всего.
+/// Верхняя плашка входящего Ping. Для срочного варианта используется красный
+/// прогресс; обычный остаётся в спокойной лесной палитре.
 struct UrgentBannerView: View {
     let callerName: String
+    let isUrgent: Bool
     let totalSeconds: TimeInterval
-    let onSeen: () -> Void
+    let onStop: () -> Void
 
     @State private var remaining: Double = 1
 
@@ -13,10 +15,9 @@ struct UrgentBannerView: View {
             HStack(spacing: 14) {
                 Circle()
                     .fill(Color.primary.opacity(0.08))
-                    .overlay(Circle().stroke(Tokens.Palette.urgent, lineWidth: 2.5))
+                    .overlay(Circle().stroke(bannerColor, lineWidth: 2.5))
                     .overlay(
-                        Text(initials)
-                            .font(.system(size: 15, weight: .semibold))
+                        Image("NearPingMark").resizable().scaledToFit().frame(width: 28, height: 28)
                             .foregroundStyle(Tokens.Palette.primary)
                     )
                     .frame(width: 46, height: 46)
@@ -28,17 +29,17 @@ struct UrgentBannerView: View {
                         .foregroundStyle(Tokens.Palette.primary)
                         .lineLimit(1)
                         .truncationMode(.tail)
-                    Text(String(localized: "urgent"))
+                    Text(isUrgent ? String(localized: "urgent") : String(localized: "Incoming Ping"))
                         .font(Tokens.Font.caption)
-                        .foregroundStyle(Tokens.Palette.urgent)
+                        .foregroundStyle(bannerColor)
                         .lineLimit(1)
                 }
                 .layoutPriority(1)
 
                 Spacer(minLength: 8)
 
-                Button(action: onSeen) {
-                    Text(String(localized: "Got it"))
+                Button(action: onStop) {
+                    Text(String(localized: "Stop"))
                         .font(.system(size: 13, weight: .semibold))
                         .padding(.horizontal, 18)
                         .padding(.vertical, 9)
@@ -51,7 +52,7 @@ struct UrgentBannerView: View {
 
             GeometryReader { geometry in
                 Rectangle()
-                    .fill(Tokens.Palette.urgent)
+                    .fill(bannerColor)
                     .frame(width: geometry.size.width * remaining)
             }
             .frame(height: 3)
@@ -66,9 +67,8 @@ struct UrgentBannerView: View {
         }
     }
 
-    private var initials: String {
-        let parts = callerName.split(separator: " ").prefix(2)
-        let letters = parts.compactMap { $0.first }.map(String.init).joined()
-        return letters.isEmpty ? "?" : letters.uppercased()
+    private var bannerColor: Color {
+        isUrgent ? Tokens.Palette.urgent : Tokens.Palette.accent
     }
+
 }
