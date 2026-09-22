@@ -1,55 +1,70 @@
 import SwiftUI
 
-/// Строка человека в списке. Имя произвольной длины не должно выдавливать
-/// точку статуса и кнопку «!» за край — отсюда приоритет раскладки и обрезка.
+/// Строка человека в списке.
+///
+/// Обе кнопки видимые и подписанные: раньше вызов делался кликом по строке,
+/// а об этом ниоткуда нельзя было догадаться.
 struct PeerRowView: View {
     let row: PeerRow
     let onCall: () -> Void
     let onUrgent: () -> Void
 
+    @State private var hovered = false
+
     var body: some View {
-        HStack(spacing: 6) {
-            Button(action: onCall) {
-                HStack(spacing: 10) {
-                    Circle()
-                        .fill(Color.primary.opacity(0.08))
-                        .overlay(
-                            Text(initials)
-                                .font(.system(size: 11, weight: .semibold))
-                                .foregroundStyle(Tokens.Palette.primary)
-                        )
-                        .frame(width: Tokens.Metric.avatar, height: Tokens.Metric.avatar)
+        HStack(spacing: 8) {
+            Circle()
+                .fill(Color.primary.opacity(0.12))
+                .overlay(
+                    Text(initials)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(Tokens.Palette.primary)
+                )
+                .frame(width: Tokens.Metric.avatar, height: Tokens.Metric.avatar)
 
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text(row.displayName)
-                            .font(Tokens.Font.name)
-                            .foregroundStyle(Tokens.Palette.primary)
-                            .lineLimit(1)
-                            .truncationMode(.tail)
-                        Text(subtitle)
-                            .font(Tokens.Font.caption)
-                            .foregroundStyle(subtitleColor)
-                            .lineLimit(1)
-                            .truncationMode(.tail)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .layoutPriority(1)
-
-                    statusDot
-                }
-                .contentShape(Rectangle())
+            // Имя произвольной длины не должно выдавливать точку и кнопки за край.
+            VStack(alignment: .leading, spacing: 1) {
+                Text(row.displayName)
+                    .font(Tokens.Font.name)
+                    .foregroundStyle(Tokens.Palette.primary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                Text(subtitle)
+                    .font(Tokens.Font.caption)
+                    .foregroundStyle(subtitleColor)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
             }
-            .buttonStyle(.plain)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .layoutPriority(1)
+
+            statusDot
+
+            Button(action: onCall) {
+                Text(String(localized: "Call"))
+                    .font(.system(size: 11, weight: .medium))
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 4)
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
             .disabled(!canCall)
+            .help(String(localized: "Send a normal call"))
 
             HoldButton(
                 isEnabled: canUrgent,
                 accessibilityText: String(localized: "Urgent call to \(row.displayName), hold to send"),
                 onFire: onUrgent
             )
+            .help(String(localized: "Hold for an urgent call"))
         }
-        .padding(.horizontal, 4)
-        .padding(.vertical, 2)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 5)
+        .background(
+            RoundedRectangle(cornerRadius: Tokens.Metric.rowRadius, style: .continuous)
+                .fill(Color.primary.opacity(hovered ? 0.07 : 0))
+        )
+        .onHover { hovered = $0 }
     }
 
     private var canCall: Bool { row.isTrusted && row.isOnline && row.pausedUntil == nil }
@@ -65,7 +80,7 @@ struct PeerRowView: View {
     }
 
     private var subtitleColor: Color {
-        if let status = row.status {
+        if row.status != nil {
             switch row.statusKind {
             case .good: return Tokens.Palette.seen
             case .paused: return Tokens.Palette.paused
