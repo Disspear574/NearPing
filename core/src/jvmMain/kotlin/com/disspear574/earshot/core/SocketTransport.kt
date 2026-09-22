@@ -2,6 +2,7 @@ package com.disspear574.earshot.core
 
 import java.io.IOException
 import java.net.InetAddress
+import java.net.InetSocketAddress
 import java.net.ServerSocket
 import java.net.Socket
 import java.util.concurrent.ConcurrentHashMap
@@ -63,9 +64,12 @@ class SocketTransport(private val events: TransportEvents) : Transport {
         val target = endpoints[keyHex] ?: return
         if (connections.containsKey(connectionId)) return
         thread("earshot-dial") {
-            val socket = try {
-                Socket(target.first, target.second)
+            val socket = Socket()
+            try {
+                socket.connect(InetSocketAddress(target.first, target.second), 5000)
             } catch (e: IOException) {
+                runCatching { socket.close() }
+                if (System.getProperty("earshot.debug") != null) println("[earshot/tcp] connect failed: ${e.message}")
                 events.onDisconnected(connectionId)
                 return@thread
             }
@@ -82,7 +86,7 @@ class SocketTransport(private val events: TransportEvents) : Transport {
                 stream.flush()
             }
         } catch (e: IOException) {
-            close(connectionId)
+            close(connectionId, socket)
         }
     }
 
@@ -104,13 +108,15 @@ class SocketTransport(private val events: TransportEvents) : Transport {
             } catch (e: IOException) {
                 // Разрыв — обычное дело: машину усыпили, сеть моргнула.
             } finally {
-                close(connectionId)
+                close(connectionId, socket)
             }
         }
     }
 
-    private fun close(connectionId: String) {
-        val socket = connections.remove(connectionId) ?: return
+    private fun close(connectionId: String, expected: Socket? = null) {
+        val socket = expected ?: connections[connectionId] ?: return
+        // An old reader must never close a replacement connection with the same ID.
+        if (!connections.remove(connectionId, socket)) return
         runCatching { socket.close() }
         events.onDisconnected(connectionId)
     }

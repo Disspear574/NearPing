@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import java.net.InetAddress
 import java.nio.file.Path
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 /** Что показывает интерфейс. Плоский снимок, пересобирается целиком. */
 data class NodeState(
@@ -19,7 +20,14 @@ data class NodeState(
     val peers: List<PeerView> = emptyList(),
     val pendingRequests: List<Peer> = emptyList(),
     val statuses: Map<String, CallStatus> = emptyMap(),
+    val networkInterfaces: List<NetworkInterfaceOption> = emptyList(),
+    val selectedInterface: String? = null,
+    val activeInterface: String? = null,
+    val networkChanging: Boolean = false,
+    val networkFailed: Boolean = false,
 )
+
+data class NetworkInterfaceOption(val name: String, val addresses: String, val multicast: Boolean)
 
 data class CallStatus(val text: String, val kind: Kind) {
     enum class Kind { NEUTRAL, GOOD, WARN, BAD }
@@ -35,7 +43,7 @@ data class IncomingCall(val keyHex: String, val displayName: String, val callId:
  * и JmDNS. Поэтому всё, что трогает ядро, выполняется на одном потоке.
  */
 class EarshotNode(directory: Path) {
-    private val worker = Executors.newSingleThreadExecutor { runnable ->
+    private val worker = Executors.newSingleThreadScheduledExecutor { runnable ->
         Thread(runnable, "earshot-engine").apply { isDaemon = true }
     }
 
@@ -45,7 +53,14 @@ class EarshotNode(directory: Path) {
     private val clock = JvmClock()
 
     private val transport = SocketTransport(TransportBridge())
-    private val discovery = JmdnsDiscovery(DiscoveryBridge())
+    private var discoveryEpoch = 0
+    private var discovery = JmdnsDiscovery(DiscoveryBridge(discoveryEpoch))
+    private val discovered = LinkedHashSet<String>()
+    private val networkPreference = NetworkPreference(directory)
+    private var selectedInterface = networkPreference.read()
+    private var networkInterfaces: List<NetworkInterfaceOption> = emptyList()
+    private var networkChanging = false
+    private var networkFailed = false
 
     private val _state = MutableStateFlow(NodeState())
     val state: StateFlow<NodeState> = _state.asStateFlow()
@@ -73,8 +88,15 @@ class EarshotNode(directory: Path) {
             listener = Events(),
         )
         transport.start()
-        discovery.start(identity, transport.port)
+        restartDiscovery()
         publish()
+        var ticks = 0
+        worker.scheduleWithFixedDelay({
+            runCatching {
+                engine.tick()
+                if (++ticks % 5 == 0) engine.retryConnections()
+            }.onFailure { it.printStackTrace() }
+        }, 1, 1, TimeUnit.SECONDS)
     }
 
     fun stop() {
@@ -83,11 +105,55 @@ class EarshotNode(directory: Path) {
         worker.shutdownNow()
     }
 
+    fun refreshNetworkInterfaces() = onWorker {
+        updateNetworkInterfaces()
+        publish()
+    }
+
+    fun selectNetworkInterface(name: String?) = onWorker {
+        // Save first: a write failure leaves the previous selection and live discovery intact.
+        try { networkPreference.write(name) }
+        catch (error: Exception) { networkFailed = true; publish(); return@onWorker }
+        selectedInterface = name
+        restartDiscovery()
+    }
+
+    private fun updateNetworkInterfaces() {
+        networkInterfaces = runCatching {
+            JmdnsDiscovery.availableInterfaces().groupBy { it.name }.map { (name, values) ->
+                NetworkInterfaceOption(name, values.map { it.address }.distinct().sorted().joinToString(", "), values.all { it.multicast })
+            }.sortedBy { it.name }
+        }.getOrDefault(emptyList())
+    }
+
+    private fun restartDiscovery() {
+        networkChanging = true
+        networkFailed = false
+        discoveryEpoch++
+        publish()
+        discovery.stop()
+        discovered.toList().forEach { key -> transport.forgetEndpoint(key); engine.onPeerLost(key) }
+        discovered.clear()
+        discovery = JmdnsDiscovery(DiscoveryBridge(discoveryEpoch))
+        updateNetworkInterfaces()
+        try { discovery.start(identity, transport.port, selectedInterface) }
+        catch (error: Exception) {
+            discovery.stop()
+            networkFailed = true
+            System.err.println("NearPing discovery: ${error.message}")
+        }
+        networkChanging = false
+        publish()
+    }
+
     // MARK: действия пользователя
 
     fun rename(name: String) = onWorker {
         keyStore.setDisplayName(name)
-        publish()
+        // Имя едет в hello и в TXT-запись: сессии переподнимаются, служба
+        // перерегистрируется. Иначе соседи видят старое имя до перезапуска.
+        engine.rename(name)
+        restartDiscovery()
     }
 
     fun call(keyHex: String, urgent: Boolean) = onWorker {
@@ -128,10 +194,15 @@ class EarshotNode(directory: Path) {
         _state.value = NodeState(
             myDisplayName = identity.displayName,
             myFingerprint = identity.fingerprint,
-            pausedUntilEpochSeconds = if (engine.isPaused) clock.nowEpochSeconds() else null,
+            pausedUntilEpochSeconds = engine.pausedUntilEpochSeconds,
             peers = engine.peers(),
             pendingRequests = engine.pendingPairingRequests(),
             statuses = statuses.toMap(),
+            networkInterfaces = networkInterfaces,
+            selectedInterface = selectedInterface,
+            activeInterface = discovery.boundInterface,
+            networkChanging = networkChanging,
+            networkFailed = networkFailed,
         )
     }
 
@@ -163,13 +234,17 @@ class EarshotNode(directory: Path) {
         override fun onDisconnected(connectionId: String) = onWorker { engine.onDisconnected(connectionId) }
     }
 
-    private inner class DiscoveryBridge : DiscoveryEvents {
+    private inner class DiscoveryBridge(private val epoch: Int) : DiscoveryEvents {
         override fun onPeerFound(peer: Peer, address: InetAddress, port: Int) = onWorker {
+            if (epoch != discoveryEpoch) return@onWorker
+            discovered.add(peer.keyHex)
             transport.rememberEndpoint(peer.keyHex, address, port)
             engine.onPeerFound(peer, "${address.hostAddress}:$port")
         }
 
         override fun onPeerLost(keyHex: String) = onWorker {
+            if (epoch != discoveryEpoch) return@onWorker
+            discovered.remove(keyHex)
             transport.forgetEndpoint(keyHex)
             engine.onPeerLost(keyHex)
         }

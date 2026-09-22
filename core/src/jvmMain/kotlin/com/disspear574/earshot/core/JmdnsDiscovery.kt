@@ -3,6 +3,8 @@ package com.disspear574.earshot.core
 import java.net.Inet4Address
 import java.net.InetAddress
 import java.net.NetworkInterface
+import java.nio.file.Files
+import java.nio.file.Path
 import javax.jmdns.JmDNS
 import javax.jmdns.ServiceEvent
 import javax.jmdns.ServiceInfo
@@ -22,13 +24,14 @@ class JmdnsDiscovery(private val events: DiscoveryEvents) {
         if (System.getProperty("earshot.debug") != null) println("[earshot/mdns] $text")
     }
 
-    private var jmdns: JmDNS? = null
+    @Volatile private var jmdns: JmDNS? = null
+    var boundInterface: String? = null
+        private set
     private var registered: ServiceInfo? = null
 
-    fun start(identity: Identity, port: Int) {
-        val bind = localAddress()
-        debug("binding to ${bind?.hostAddress ?: "default"}")
-        val dns = if (bind != null) JmDNS.create(bind) else JmDNS.create()
+    fun start(identity: Identity, port: Int, preferredInterface: String? = null) {
+        val bind = localAddress(preferredInterface)
+        val dns = JmDNS.create(bind)
         jmdns = dns
 
         val info = ServiceInfo.create(
@@ -46,11 +49,13 @@ class JmdnsDiscovery(private val events: DiscoveryEvents) {
 
         dns.addServiceListener("${TxtRecord.SERVICE_TYPE}.local.", object : ServiceListener {
             override fun serviceAdded(event: ServiceEvent) {
+                if (jmdns !== dns) return
                 debug("added ${event.name}")
                 dns.requestServiceInfo(event.type, event.name, true)
             }
 
             override fun serviceResolved(event: ServiceEvent) {
+                if (jmdns !== dns) return
                 debug("resolved ${event.name}")
                 val resolved = event.info ?: return debug("no info")
                 val txt = buildMap {
@@ -70,6 +75,7 @@ class JmdnsDiscovery(private val events: DiscoveryEvents) {
             }
 
             override fun serviceRemoved(event: ServiceEvent) {
+                if (jmdns !== dns) return
                 val txt = event.info?.getPropertyString("pk") ?: return
                 val key = Base64Url.decode(txt)
                 if (key.size != IDENTITY_KEY_BYTES) return
@@ -78,28 +84,39 @@ class JmdnsDiscovery(private val events: DiscoveryEvents) {
         })
     }
 
-    /**
-     * InetAddress.getLocalHost() отдаёт адрес по имени хоста, а это может быть
-     * петля или адрес чужого интерфейса. Тогда JmDNS отправляет пакеты, но не
-     * слушает нужную группу — служба видна всем, а сам он не видит никого.
-     */
-    private fun localAddress(): InetAddress? = runCatching {
-        NetworkInterface.getNetworkInterfaces().toList()
-            .filter { it.isUp && !it.isLoopback && it.supportsMulticast() }
-            .flatMap { iface -> iface.inetAddresses.toList().map { iface to it } }
-            .firstOrNull { (_, address) ->
-                address is Inet4Address && !address.isLoopbackAddress && address.isSiteLocalAddress
-            }
-            ?.second
-    }.getOrNull()
-
-    fun stop() {
-        registered?.let { runCatching { jmdns?.unregisterService(it) } }
-        runCatching { jmdns?.close() }
-        jmdns = null
+    private fun localAddress(preferredInterface: String?): InetAddress {
+        val candidates = availableInterfaces()
+        candidates.forEach { debug("interface ${it.name}: ${it.address}, defaultRouteMetric=${it.routeMetric}, multicast=${it.multicast}") }
+        val selected = LanInterfaceSelector.select(candidates, preferredInterface)
+            ?: error("Selected network interface is unavailable: ${preferredInterface ?: "automatic"}")
+        boundInterface = "${selected.name} · ${selected.address}"
+        debug("binding to ${selected.address} on ${selected.name}")
+        return InetAddress.getByName(selected.address)
     }
 
-    private companion object {
-        const val IDENTITY_KEY_BYTES = 32
+    fun stop() {
+        val old = jmdns
+        jmdns = null
+        registered?.let { runCatching { old?.unregisterService(it) } }
+        runCatching { old?.close() }
+        registered = null
+        boundInterface = null
+    }
+
+    companion object {
+        private const val IDENTITY_KEY_BYTES = 32
+        internal fun availableInterfaces(): List<LanInterfaceCandidate> {
+            val routes = runCatching { Files.readString(Path.of("/proc/net/route")) }.getOrDefault("")
+            val metrics = LanInterfaceSelector.defaultRouteMetrics(routes)
+            return NetworkInterface.getNetworkInterfaces().toList()
+                .filter { it.isUp && !it.isLoopback }
+                .flatMap { iface ->
+                    iface.inetAddresses.toList().filterIsInstance<Inet4Address>()
+                        .filter { !it.isLoopbackAddress && !it.isAnyLocalAddress && !it.isMulticastAddress && !it.isLinkLocalAddress }
+                        .map { address -> LanInterfaceCandidate(iface.name, address.hostAddress,
+                            Files.exists(Path.of("/sys/class/net", iface.name, "device")), metrics[iface.name],
+                            iface.supportsMulticast(), iface.isPointToPoint) }
+                }
+        }
     }
 }
