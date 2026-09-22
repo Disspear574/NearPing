@@ -7,6 +7,13 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 class WireTest {
+    @Test fun oldPresenceDoesNotOptIntoHeartbeatTimeout() {
+        val legacy = """{"v":1,"body":{"type":"presence","pausedUntilEpochSeconds":null}}""".encodeToByteArray()
+        assertEquals(Message.Presence(heartbeat = false), Wire.decode(legacy))
+        val current = Message.Presence(heartbeat = true)
+        assertEquals(current, Wire.decode(Wire.encode(current)))
+    }
+
     @Test
     fun pingRoundTrips() {
         val original = Message.Ping(id = "p1", urgent = true)

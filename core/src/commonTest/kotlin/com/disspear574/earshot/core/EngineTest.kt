@@ -28,7 +28,7 @@ private class Recorded : EngineListener {
 }
 
 /** Две машины в одной «сети»: доставка через очереди, порядок детерминирован. */
-private class TwoMachines {
+private class TwoMachines(staleTrustedName: String? = null, legacyB: Boolean = false) {
     val clock = TestClock()
     val aKey = ByteArray(32) { 0x11 }
     val bKey = ByteArray(32) { 0x22 }
@@ -51,8 +51,19 @@ private class TwoMachines {
     }
 
     val a = Engine(Identity(aKey, "Аня"), FakeSigner(aKey), FakeCrypto(1),
-        PeerRegistry(MemoryPeers()), Wire(toB = true), clock, aEvents)
-    val b = Engine(Identity(bKey, "Борис"), FakeSigner(bKey), FakeCrypto(2),
+        PeerRegistry(MemoryPeers()).also { registry ->
+            if (staleTrustedName != null) registry.trust(Peer(bKey, staleTrustedName))
+        }, Wire(toB = true), clock, aEvents)
+    private val bCrypto = FakeCrypto(2)
+    private val compatibleCrypto = object : Crypto by bCrypto {
+        override fun seal(key: ByteArray, plaintext: ByteArray): ByteArray {
+            // Emulate an older peer's Presence on the actual encrypted session path.
+            val payload = if (legacyB) plaintext.decodeToString()
+                .replace(",\"heartbeat\":true", "").encodeToByteArray() else plaintext
+            return bCrypto.seal(key, payload)
+        }
+    }
+    val b = Engine(Identity(bKey, "Борис"), FakeSigner(bKey), compatibleCrypto,
         PeerRegistry(MemoryPeers()), Wire(toB = false), clock, bEvents)
 
     // Аня набирает (её ключ меньше), Борис принимает входящее.
@@ -82,6 +93,104 @@ private class TwoMachines {
 }
 
 class EngineConnectionTest {
+    @Test fun legacyPeerStaysCompatibleWithoutFalseOfflineStatus() {
+        val net = TwoMachines(legacyB = true)
+        net.connect(); net.pairThem()
+        repeat(60) { net.clock.now++; net.a.tick(); net.pump() }
+        assertTrue(net.a.peers().single().isOnline)
+        net.a.call(net.bHex, false); net.pump()
+        assertEquals(1, net.bEvents.incoming.size)
+    }
+
+    @Test fun silentPeerExpiresAfterTwelveSecondsAndCanReconnect() {
+        val net = TwoMachines()
+        net.connect(); net.pairThem()
+        net.clock.now += 11
+        net.a.tick()
+        assertTrue(net.a.peers().single().isOnline)
+        net.clock.now += 1
+        net.a.tick()
+        assertFalse(net.a.peers().single().isOnline)
+        net.a.retryConnections()
+        assertEquals(2, net.aDials.size)
+        net.b.onDisconnected(net.bConn)
+        net.pump() // Discard packets for the closed sessions.
+        net.connect()
+        assertTrue(net.a.peers().single().isOnline)
+        assertTrue(net.b.peers().single().isOnline)
+    }
+
+    @Test fun heartbeatsKeepIdlePausedPeersOnlineWithoutAlerts() {
+        val net = TwoMachines()
+        net.connect(); net.pairThem()
+        net.b.pauseUntil(net.clock.now + 120); net.pump()
+        repeat(60) {
+            net.clock.now++
+            net.a.tick(); net.b.tick(); net.pump()
+            assertTrue(net.a.peers().single().isOnline)
+            assertTrue(net.b.peers().single().isOnline)
+        }
+        assertTrue(net.a.peers().single().isPaused)
+        assertTrue(net.aEvents.incoming.isEmpty())
+        assertTrue(net.bEvents.incoming.isEmpty())
+        assertEquals(0L, net.a.callCooldownSeconds(net.bHex, false))
+    }
+
+    @Test fun oneWayLossExpiresTheSideThatReceivesNothing() {
+        val net = TwoMachines()
+        net.connect()
+        repeat(4) {
+            net.clock.now += 3
+            net.b.tick(); net.pump()
+        }
+        assertTrue(net.a.peers().single().isOnline)
+        assertFalse(net.b.peers().single().isOnline)
+    }
+
+    @Test fun stalledHandshakeDoesNotPreventRetryForever() {
+        val net = TwoMachines()
+        net.a.onPeerFound(Peer(net.bKey, "Борис"), "b:1")
+        net.a.onConnected(net.aConn)
+        net.clock.now += 12
+        net.a.tick(); net.a.retryConnections()
+        assertEquals(2, net.aDials.size)
+    }
+
+    @Test fun retriesFailedDialBeforeHandshake() {
+        val net = TwoMachines()
+        net.a.onPeerFound(Peer(net.bKey, "Борис"), "b:1")
+        net.a.retryConnections()
+        assertEquals(1, net.aDials.size)
+        net.a.onDisconnected(net.aConn)
+        net.a.retryConnections()
+        assertEquals(2, net.aDials.size)
+        net.a.onPeerLost(net.bHex)
+        net.a.retryConnections()
+        assertEquals(2, net.aDials.size)
+    }
+
+    @Test fun retriesDisconnectedPeerWithoutNewDiscovery() {
+        val net = TwoMachines()
+        net.connect(); net.pairThem()
+        net.a.retryConnections()
+        assertEquals(1, net.aDials.size)
+        net.a.onDisconnected(net.aConn)
+        net.a.retryConnections()
+        assertEquals(2, net.aDials.size)
+        net.b.retryConnections()
+        assertTrue(net.bDials.isEmpty())
+    }
+
+    @Test
+    fun authenticatedReconnectUpdatesTrustedName() {
+        val net = TwoMachines(staleTrustedName = "Old name")
+        net.a.onPeerFound(Peer(net.bKey, "Unauthenticated name"), "b:1")
+        assertEquals("Old name", net.a.peers().single().displayName)
+        net.connect()
+        assertEquals("Борис", net.a.peers().single().displayName)
+        assertTrue(net.a.peers().single().isTrusted)
+    }
+
     @Test
     fun bothSidesComeOnline() {
         val net = TwoMachines()
@@ -154,6 +263,22 @@ class EngineConnectionTest {
 }
 
 class EngineCallTest {
+    @Test
+    fun repeatedPingIsBlockedButUrgentRemainsAvailable() {
+        val net = TwoMachines()
+        net.connect(); net.pairThem()
+        assertTrue(net.a.call(net.bHex, false) != null); net.pump()
+        assertNull(net.a.call(net.bHex, false)); net.pump()
+        assertEquals(1, net.bEvents.incoming.size)
+        assertEquals(3L, net.a.callCooldownSeconds(net.bHex, false))
+        assertTrue(net.a.call(net.bHex, true) != null); net.pump()
+        assertNull(net.a.call(net.bHex, true))
+        assertEquals(2, net.bEvents.incoming.size)
+        net.clock.now += 3
+        assertTrue(net.a.call(net.bHex, false) != null); net.pump()
+        assertEquals(3, net.bEvents.incoming.size)
+    }
+
     @Test
     fun callReachesTrustedPeer() {
         val net = TwoMachines()
@@ -244,5 +369,57 @@ class EnginePauseTest {
         net.b.pauseUntil(net.clock.now + 900); net.pump()
         net.b.pauseUntil(null); net.pump()
         assertFalse(net.a.peers().single { it.keyHex == net.bHex }.isPaused)
+    }
+}
+
+class EngineRepairPairingTest {
+    @Test fun oneSidedDeletionCanPairAgain() {
+        val net = TwoMachines()
+        net.connect(); net.pairThem()
+        net.a.forget(net.bHex)
+        assertFalse(net.a.peers().single().isTrusted)
+        assertTrue(net.b.peers().single().isTrusted)
+        net.a.requestPairing(net.bHex); net.pump()
+        assertEquals(net.aHex, net.b.pendingPairingRequests().single().keyHex)
+        val notifications = net.bEvents.pairingRequests.size
+        net.a.requestPairing(net.bHex); net.pump()
+        assertEquals(notifications, net.bEvents.pairingRequests.size)
+        net.b.acceptPairing(net.aHex); net.pump()
+        assertTrue(net.a.peers().single().isTrusted)
+        assertTrue(net.b.peers().single().isTrusted)
+        assertTrue(net.b.pendingPairingRequests().isEmpty())
+        net.a.call(net.bHex, false); net.pump()
+        assertEquals(1, net.bEvents.incoming.size)
+        net.b.call(net.aHex, false); net.pump()
+        assertEquals(1, net.aEvents.incoming.size)
+    }
+    @Test fun rejectingRepairDoesNotRestoreDeletedTrustAndCanAskAgain() {
+        val net = TwoMachines()
+        net.connect(); net.pairThem(); net.a.forget(net.bHex)
+        net.a.requestPairing(net.bHex); net.pump()
+        net.b.rejectPairing(net.aHex); net.pump()
+        assertFalse(net.a.peers().single().isTrusted)
+        assertEquals(1, net.aEvents.rejections.size)
+        net.a.requestPairing(net.bHex); net.pump()
+        assertEquals(1, net.b.pendingPairingRequests().size)
+    }
+    @Test fun deletionInvalidatesAcceptanceAlreadyInFlight() {
+        val net = TwoMachines()
+        net.connect()
+        net.a.requestPairing(net.bHex); net.pump()
+        net.b.acceptPairing(net.aHex)
+        net.a.forget(net.bHex)
+        net.pump()
+        assertFalse(net.a.peers().single().isTrusted)
+    }
+    @Test fun deletionClearsIncomingRequest() {
+        val net = TwoMachines()
+        net.connect()
+        net.a.requestPairing(net.bHex); net.pump()
+        net.b.forget(net.aHex)
+        assertTrue(net.b.pendingPairingRequests().isEmpty())
+        net.b.acceptPairing(net.aHex); net.pump()
+        assertFalse(net.a.peers().single().isTrusted)
+        assertFalse(net.b.peers().single().isTrusted)
     }
 }

@@ -8,8 +8,13 @@ class Identity(
     val publicKey: ByteArray,
     displayName: String,
 ) {
-    val displayName: String = displayName.trim().ifBlank { FALLBACK_NAME }
+    /** Имя меняется на лету: ключ остаётся, сессии переподнимаются с новым `hello`. */
+    var displayName: String = normalize(displayName)
+        set(value) { field = normalize(value) }
+
     val fingerprint: String get() = Core.fingerprint(publicKey)
+
+    private fun normalize(name: String): String = name.trim().ifBlank { FALLBACK_NAME }
 
     companion object {
         const val FALLBACK_NAME = "Earshot"

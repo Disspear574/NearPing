@@ -58,7 +58,10 @@ sealed interface Message {
     /** Пауза едет по доверенному соединению, а не в TXT: её видят только контакты. */
     @Serializable
     @SerialName("presence")
-    data class Presence(val pausedUntilEpochSeconds: Long? = null) : Message
+    data class Presence(
+        val pausedUntilEpochSeconds: Long? = null,
+        val heartbeat: Boolean = false,
+    ) : Message
 }
 
 @Serializable
