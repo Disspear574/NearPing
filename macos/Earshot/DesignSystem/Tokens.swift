@@ -1,15 +1,19 @@
 import SwiftUI
 import AppKit
 
-/// Значения сняты с согласованного макета. Числа, которого там не было,
-/// в коде появиться не должно.
+/// Токены попапа.
+///
+/// Текст намеренно идёт системными семантическими цветами, а не фиксированными
+/// оттенками из макета: попап стоит на системном материале, прозрачность которого
+/// зависит от обоев и темы, и любой зашитый серый на нём рано или поздно плывёт.
+/// Свои цвета остаются только там, где они несут смысл.
 enum Tokens {
     enum Metric {
         static let popoverWidth: CGFloat = 320
-        static let rowRadius: CGFloat = 13
+        static let rowRadius: CGFloat = 10
         static let avatar: CGFloat = 28
         static let dot: CGFloat = 8
-        static let urgentButton: CGFloat = 30
+        static let urgentButton: CGFloat = 28
         static let holdSeconds: TimeInterval = 0.9
     }
 
@@ -22,12 +26,14 @@ enum Tokens {
     }
 
     enum Palette {
-        static let primary = dynamic(light: 0x15151A, dark: 0xF3F3F6)
-        static let secondary = dynamic(light: 0x6B6B74, dark: 0xA4A4AD)
-        static let paused = dynamic(light: 0x7F5C00, dark: 0xE8B33D)
-        static let seen = dynamic(light: 0x1B6F40, dark: 0x5BD98A)
-        static let online = dynamic(light: 0x2C9D65, dark: 0x40D486)
-        static let offline = dynamic(light: 0x83838C, dark: 0x8B8B95)
+        /// Системные: сами держат контраст на любом материале.
+        static let primary = Color.primary
+        static let secondary = Color.secondary
+
+        static let paused = dynamic(light: 0x8A6300, dark: 0xF0C14B)
+        static let seen = dynamic(light: 0x18703F, dark: 0x5FE39A)
+        static let online = dynamic(light: 0x1E8E55, dark: 0x4ADE8A)
+        static let offline = dynamic(light: 0x6E6E78, dark: 0xA0A0AA)
         /// Системным акцентом не подменяется никогда: иначе у человека с зелёным
         /// акцентом срочный вызов станет зелёным.
         static let urgent = dynamic(light: 0xC42D18, dark: 0xFF7A5A)

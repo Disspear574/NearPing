@@ -73,9 +73,12 @@ private struct PopoverView: View {
     }
 
     private var contacts: [PeerRow] { runtime.peers.filter(\.isTrusted) }
+
+    /// Неспаренные и отключившиеся не показываются: добавить их нельзя, а в списке
+    /// они выглядят как дубль контакта, который рядом стоит живым.
     private var nearby: [PeerRow] {
         let pendingIds = Set(runtime.pendingRequests.map(\.id))
-        return runtime.peers.filter { !$0.isTrusted && !pendingIds.contains($0.id) }
+        return runtime.peers.filter { !$0.isTrusted && $0.isOnline && !pendingIds.contains($0.id) }
     }
 
     private var localNetworkWarning: some View {
@@ -107,7 +110,7 @@ private struct PopoverView: View {
                     .font(Tokens.Font.nameStrong)
                     .onSubmit { runtime.rename(to: nameDraft) }
                 Text(verbatim: runtime.myFingerprint)
-                    .font(Tokens.Font.caption)
+                    .font(.system(size: 11, design: .monospaced))
                     .foregroundStyle(Tokens.Palette.secondary)
                     .lineLimit(1)
             }
@@ -138,7 +141,7 @@ private struct PopoverView: View {
         Text(title)
             .font(Tokens.Font.section)
             .kerning(0.5)
-            .foregroundStyle(Tokens.Palette.secondary)
+            .foregroundStyle(Tokens.Palette.primary.opacity(0.65))
             .padding(.horizontal, 16)
             .padding(.top, 11)
             .padding(.bottom, 4)
@@ -161,8 +164,10 @@ private struct PopoverView: View {
             .layoutPriority(1)
 
             Button(String(localized: "Accept")) { runtime.acceptPairing(row) }
+                .buttonStyle(.borderedProminent)
                 .controlSize(.small)
             Button(String(localized: "Decline")) { runtime.rejectPairing(row) }
+                .buttonStyle(.bordered)
                 .controlSize(.small)
         }
         .padding(.horizontal, 16)
@@ -185,6 +190,7 @@ private struct PopoverView: View {
             .layoutPriority(1)
 
             Button(String(localized: "Add")) { runtime.requestPairing(row) }
+                .buttonStyle(.borderedProminent)
                 .controlSize(.small)
                 .disabled(!row.isOnline)
         }
@@ -193,12 +199,19 @@ private struct PopoverView: View {
     }
 
     private var footer: some View {
-        HStack {
-            Spacer()
-            Button(String(localized: "Quit")) { NSApplication.shared.terminate(nil) }
-                .buttonStyle(.plain)
-                .font(Tokens.Font.footer)
+        HStack(spacing: 8) {
+            // Жест удержания ниоткуда не следует — про него надо сказать словами.
+            Text(String(localized: "Hold ! for an urgent call"))
+                .font(Tokens.Font.caption)
                 .foregroundStyle(Tokens.Palette.secondary)
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .layoutPriority(1)
+            Spacer(minLength: 0)
+            Button(String(localized: "Quit")) { NSApplication.shared.terminate(nil) }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .fixedSize()
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
