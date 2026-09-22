@@ -1,5 +1,8 @@
 package com.disspear574.earshot.linux
 
+import androidx.compose.foundation.Image
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -28,15 +31,22 @@ import kotlinx.coroutines.delay
 fun PeerListScreen(
     state: NodeState,
     strings: Strings,
+    themeMode: ThemeMode,
+    onTheme: (ThemeMode) -> Unit,
     onRename: (String) -> Unit,
     onCall: (String, Boolean) -> Unit,
     onAdd: (String) -> Unit,
     onAccept: (String) -> Unit,
     onDecline: (String) -> Unit,
+    onForget: (String) -> Unit,
     onPause: (Int?) -> Unit,
     onQuit: () -> Unit,
+    onSelectNetwork: (String?) -> Unit,
+    onRefreshNetworks: () -> Unit,
 ) {
-    val colors = LocalEarshotColors.current
+    var showingSettings by remember { mutableStateOf(false) }
+    var showPause by remember { mutableStateOf(false) }
+    var contactToRemove by remember { mutableStateOf<PeerView?>(null) }
     var nameDraft by remember(state.myDisplayName) { mutableStateOf(state.myDisplayName) }
 
     Column(
@@ -45,132 +55,258 @@ fun PeerListScreen(
             .verticalScroll(rememberScrollState())
             .padding(bottom = 12.dp)
     ) {
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            OutlinedTextField(
-                value = nameDraft,
-                onValueChange = { nameDraft = it },
-                label = { Text(strings.yourName) },
-                singleLine = true,
-                shape = RoundedCornerShape(Yaru.buttonRadius),
-                modifier = Modifier.weight(1f),
-            )
-            Spacer(Modifier.width(10.dp))
-            Button(
-                onClick = { onRename(nameDraft) },
-                shape = RoundedCornerShape(Yaru.buttonRadius),
-                enabled = nameDraft.isNotBlank() && nameDraft != state.myDisplayName,
-            ) { Text("OK") }
+        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically) {
+            if (showingSettings) {
+                TextButton(onClick = { showingSettings = false }) { Text(strings.back) }
+                Text(strings.settings, modifier = Modifier.weight(1f), maxLines = 1,
+                    overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold)
+            } else {
+                Image(painterResource("nearping.png"), contentDescription = null, modifier = Modifier.size(23.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("NearPing", fontSize = 18.sp, fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onBackground)
+                Spacer(Modifier.weight(1f))
+                Text(state.myDisplayName, style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1,
+                    overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 120.dp))
+                TextButton(onClick = { showingSettings = true }, modifier = Modifier.size(34.dp),
+                    contentPadding = PaddingValues(0.dp)) { Text("⚙", fontSize = 20.sp) }
+            }
         }
+        AnimatedContent(targetState = showingSettings, label = "settings") { settingsVisible ->
+            Column {
+                if (settingsVisible) {
+                    Row(
+                        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        OutlinedTextField(
+                            value = nameDraft,
+                            onValueChange = { nameDraft = it },
+                            label = { Text(strings.yourName) },
+                            singleLine = true,
+                            shape = RoundedCornerShape(Yaru.buttonRadius),
+                            modifier = Modifier.weight(1f),
+                        )
+                        Spacer(Modifier.width(10.dp))
+                        Button(
+                            onClick = { onRename(nameDraft) },
+                            shape = RoundedCornerShape(Yaru.buttonRadius),
+                            enabled = nameDraft.isNotBlank() && nameDraft != state.myDisplayName,
+                        ) { Text("OK") }
+                    }
 
-        Text(
-            state.myFingerprint,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 16.dp),
+                    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+                        Text(strings.appearance, style = MaterialTheme.typography.labelLarge)
+                        SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
+                            listOf(
+                                ThemeMode.SYSTEM to strings.systemTheme,
+                                ThemeMode.LIGHT to strings.lightTheme,
+                                ThemeMode.DARK to strings.darkTheme,
+                            ).forEachIndexed { index, (mode, label) ->
+                                SegmentedButton(
+                                    selected = themeMode == mode,
+                                    onClick = { onTheme(mode) },
+                                    shape = SegmentedButtonDefaults.itemShape(index, 3),
+                                    label = { Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                                )
+                            }
+                        }
+                        Text(strings.discoveryNetwork, style = MaterialTheme.typography.labelLarge)
+                        var networkMenu by remember { mutableStateOf(false) }
+                        Box {
+                            OutlinedButton(
+                                onClick = { onRefreshNetworks(); networkMenu = true },
+                                enabled = !state.networkChanging,
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Text(state.selectedInterface ?: strings.automaticNetwork, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            }
+                            DropdownMenu(expanded = networkMenu, onDismissRequest = { networkMenu = false }) {
+                                DropdownMenuItem(text = { Text(strings.automaticNetwork) }, onClick = {
+                                    networkMenu = false; onSelectNetwork(null)
+                                })
+                                state.networkInterfaces.forEach { network ->
+                                    DropdownMenuItem(text = {
+                                        Column(Modifier.widthIn(max = 320.dp)) {
+                                            Text(network.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                            Text(network.addresses, style = MaterialTheme.typography.bodySmall,
+                                                maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                            if (!network.multicast) Text(strings.noMulticast, style = MaterialTheme.typography.bodySmall)
+                                        }
+                                    }, onClick = { networkMenu = false; onSelectNetwork(network.name) })
+                                }
+                            }
+                        }
+                        Text(when {
+                            state.networkChanging -> strings.networkChanging
+                            state.networkFailed -> strings.networkFailed
+                            else -> state.activeInterface ?: strings.networkNotConnected
+                        }, style = MaterialTheme.typography.bodySmall, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                        Text(strings.virtualNetworkHint, style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+
+                    Text(
+                        state.myFingerprint,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                    )
+                    Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.End) {
+                        Button(
+                            onClick = { onRename(nameDraft); showingSettings = false },
+                            enabled = nameDraft.isNotBlank(),
+                        ) { Text(strings.save) }
+                    }
+
+                } else {
+                    Row(
+                        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        val paused = state.pausedUntilEpochSeconds != null
+                        if (paused) Text("Ⅱ", color = LocalEarshotColors.current.paused, fontWeight = FontWeight.Bold)
+                        else Box(Modifier.size(10.dp).clip(CircleShape).background(LocalEarshotColors.current.online))
+                        Spacer(Modifier.width(8.dp))
+                        Text(if (paused) strings.paused else strings.available,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(Modifier.weight(1f))
+                        TextButton(onClick = { if (paused) onPause(null) else showPause = true }) {
+                            Text(if (paused) strings.resume else "Ⅱ ${strings.pause}")
+                        }
+                    }
+
+                    if (state.pendingRequests.isNotEmpty()) {
+                        SectionLabel(strings.pairingRequests)
+                        state.pendingRequests.forEach { peer ->
+                            Row(
+                                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Column(Modifier.weight(1f)) {
+                                    Text(peer.displayName, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    Text(
+                                        peer.fingerprint,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1,
+                                    )
+                                }
+                                Spacer(Modifier.width(8.dp))
+                                Button(onClick = { onAccept(peer.keyHex) }, shape = RoundedCornerShape(Yaru.buttonRadius)) {
+                                    Text(strings.accept)
+                                }
+                                Spacer(Modifier.width(6.dp))
+                                OutlinedButton(onClick = { onDecline(peer.keyHex) }, shape = RoundedCornerShape(Yaru.buttonRadius)) {
+                                    Text(strings.decline)
+                                }
+                            }
+                        }
+                    }
+
+                    val contacts = state.peers.filter { it.isTrusted }
+                    val pendingKeys = state.pendingRequests.map { it.keyHex }.toSet()
+                    val nearby = state.peers.filter { !it.isTrusted && it.isOnline && it.keyHex !in pendingKeys }
+
+                    if (contacts.isNotEmpty()) {
+                        SectionLabel(strings.contacts)
+                        Card(
+                            Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                            shape = RoundedCornerShape(Yaru.cardRadius),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        ) {
+                            contacts.forEachIndexed { index, peer ->
+                                if (index > 0) HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f))
+                                ContactRow(peer, state.statuses[peer.keyHex], strings, onCall) {
+                                    contactToRemove = peer
+                                }
+                            }
+                        }
+                    }
+
+                    SectionLabel(strings.nearby)
+                    if (nearby.isEmpty()) {
+                        Text(
+                            strings.nobodyNearby,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 16.dp),
+                        )
+                    } else {
+                        nearby.forEach { peer ->
+                            Row(
+                                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Column(Modifier.weight(1f)) {
+                                    Text(peer.displayName, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    Text(
+                                        state.statuses[peer.keyHex]?.text ?: peer.fingerprint,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1,
+                                    )
+                                }
+                                Spacer(Modifier.width(8.dp))
+                                Button(
+                                    onClick = { onAdd(peer.keyHex) },
+                                    enabled = peer.isOnline,
+                                    shape = RoundedCornerShape(Yaru.buttonRadius),
+                                ) { Text(strings.add) }
+                            }
+                        }
+                    }
+                    HorizontalDivider(Modifier.padding(horizontal = 12.dp, vertical = 8.dp))
+                    Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(strings.urgentInMenu, style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1,
+                            overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                        Spacer(Modifier.width(8.dp))
+                        OutlinedButton(onClick = onQuit) { Text(strings.quit) }
+                    }
+                }
+            }
+        }
+    }
+    if (showPause) {
+        var minutes by remember { mutableStateOf("30") }
+        val valid = minutes.toIntOrNull()?.let { it in 1..10080 } == true
+        AlertDialog(
+            onDismissRequest = { showPause = false },
+            title = { Text(strings.pause) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(minutes, { minutes = it.filter(Char::isDigit).take(5) },
+                        label = { Text(strings.minutes) }, singleLine = true)
+                    Text(strings.pauseRange, style = MaterialTheme.typography.bodySmall)
+                }
+            },
+            confirmButton = {
+                Button(onClick = { onPause(minutes.toInt()); showPause = false }, enabled = valid) {
+                    Text(strings.pause)
+                }
+            },
+            dismissButton = { TextButton(onClick = { showPause = false }) { Text(strings.cancel) } },
         )
-
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            var open by remember { mutableStateOf(false) }
-            val paused = state.pausedUntilEpochSeconds != null
-            OutlinedButton(
-                onClick = { open = true },
-                shape = RoundedCornerShape(Yaru.buttonRadius),
-            ) { Text(if (paused) strings.paused else strings.pause) }
-            DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-                DropdownMenuItem(text = { Text(strings.minutes15) }, onClick = { onPause(15); open = false })
-                DropdownMenuItem(text = { Text(strings.hour1) }, onClick = { onPause(60); open = false })
-                DropdownMenuItem(text = { Text(strings.untilTomorrow) }, onClick = { onPause(60 * 12); open = false })
-                HorizontalDivider()
-                DropdownMenuItem(text = { Text(strings.resume) }, onClick = { onPause(null); open = false })
-            }
-            Spacer(Modifier.weight(1f))
-            TextButton(onClick = onQuit) { Text(strings.quit) }
-        }
-
-        if (state.pendingRequests.isNotEmpty()) {
-            SectionLabel(strings.pairingRequests)
-            state.pendingRequests.forEach { peer ->
-                Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        Text(peer.displayName, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(
-                            peer.fingerprint,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                        )
-                    }
-                    Spacer(Modifier.width(8.dp))
-                    Button(onClick = { onAccept(peer.keyHex) }, shape = RoundedCornerShape(Yaru.buttonRadius)) {
-                        Text(strings.accept)
-                    }
-                    Spacer(Modifier.width(6.dp))
-                    OutlinedButton(onClick = { onDecline(peer.keyHex) }, shape = RoundedCornerShape(Yaru.buttonRadius)) {
-                        Text(strings.decline)
-                    }
-                }
-            }
-        }
-
-        val contacts = state.peers.filter { it.isTrusted }
-        val pendingKeys = state.pendingRequests.map { it.keyHex }.toSet()
-        val nearby = state.peers.filter { !it.isTrusted && it.keyHex !in pendingKeys }
-
-        if (contacts.isNotEmpty()) {
-            SectionLabel(strings.contacts)
-            Card(
-                Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                shape = RoundedCornerShape(Yaru.cardRadius),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            ) {
-                contacts.forEachIndexed { index, peer ->
-                    if (index > 0) HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f))
-                    ContactRow(peer, state.statuses[peer.keyHex], strings, onCall)
-                }
-            }
-        }
-
-        SectionLabel(strings.nearby)
-        if (nearby.isEmpty()) {
-            Text(
-                strings.nobodyNearby,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 16.dp),
-            )
-        } else {
-            nearby.forEach { peer ->
-                Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        Text(peer.displayName, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(
-                            state.statuses[peer.keyHex]?.text ?: peer.fingerprint,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                        )
-                    }
-                    Spacer(Modifier.width(8.dp))
-                    Button(
-                        onClick = { onAdd(peer.keyHex) },
-                        enabled = peer.isOnline,
-                        shape = RoundedCornerShape(Yaru.buttonRadius),
-                    ) { Text(strings.add) }
-                }
-            }
-        }
+    }
+    contactToRemove?.let { peer ->
+        AlertDialog(
+            onDismissRequest = { contactToRemove = null },
+            title = { Text(strings.removeContactQuestion) },
+            text = { Text(peer.displayName, maxLines = 2, overflow = TextOverflow.Ellipsis) },
+            confirmButton = {
+                Button(
+                    onClick = { onForget(peer.keyHex); contactToRemove = null },
+                    colors = ButtonDefaults.buttonColors(containerColor = LocalEarshotColors.current.urgent),
+                ) { Text(strings.removeContact) }
+            },
+            dismissButton = {
+                TextButton(onClick = { contactToRemove = null }) { Text(strings.cancel) }
+            },
+        )
     }
 }
 
@@ -190,6 +326,7 @@ private fun ContactRow(
     status: CallStatus?,
     strings: Strings,
     onCall: (String, Boolean) -> Unit,
+    onRemove: () -> Unit,
 ) {
     val colors = LocalEarshotColors.current
     val callable = peer.isTrusted && peer.isOnline && !peer.isPaused
@@ -232,13 +369,32 @@ private fun ContactRow(
         StatusDot(peer, colors)
         Spacer(Modifier.width(10.dp))
 
-        TextButton(
+        var actions by remember { mutableStateOf(false) }
+        Box {
+            TextButton(onClick = { actions = true }, modifier = Modifier.width(32.dp),
+                contentPadding = PaddingValues(0.dp)) { Text("⋯") }
+            DropdownMenu(expanded = actions, onDismissRequest = { actions = false }) {
+                Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(strings.holdForUrgent, modifier = Modifier.widthIn(max = 200.dp))
+                    Spacer(Modifier.width(12.dp))
+                    HoldButton(enabled = callable, label = strings.holdForUrgent) {
+                        actions = false; onCall(peer.keyHex, true)
+                    }
+                }
+                HorizontalDivider()
+                DropdownMenuItem(text = { Text(strings.removeContact) }, onClick = {
+                    actions = false
+                    onRemove()
+                })
+            }
+        }
+        Button(
             onClick = { onCall(peer.keyHex, false) },
             enabled = callable,
+            modifier = Modifier.width(88.dp).height(42.dp),
             shape = RoundedCornerShape(Yaru.buttonRadius),
-        ) { Text("ping") }
+        ) { Text("Ping", fontWeight = FontWeight.SemiBold) }
 
-        HoldButton(enabled = callable, label = strings.holdForUrgent) { onCall(peer.keyHex, true) }
     }
 }
 

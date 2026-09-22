@@ -1,5 +1,7 @@
 package com.disspear574.earshot.linux
 
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -21,7 +23,13 @@ import androidx.compose.ui.window.rememberWindowState
 import com.disspear574.earshot.core.EarshotNode
 import com.disspear574.earshot.core.IncomingCall
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.CancellationException
+import javax.swing.SwingUtilities
+import java.awt.MouseInfo
+import java.awt.Toolkit
+import androidx.compose.ui.input.key.*
 import java.nio.file.Path
+import java.util.prefs.Preferences
 
 private fun dataDirectory(): Path {
     val base = System.getenv("XDG_DATA_HOME")
@@ -33,51 +41,156 @@ fun main() = application {
     val strings = remember { Strings.current() }
     val node = remember { EarshotNode(dataDirectory()) }
     val state by node.state.collectAsState()
+    val preferences = remember { Preferences.userNodeForPackage(EarshotNode::class.java) }
+    var themeMode by remember {
+        mutableStateOf(
+            runCatching { ThemeMode.valueOf(preferences.get("theme", ThemeMode.SYSTEM.name)) }
+                .getOrDefault(ThemeMode.SYSTEM)
+        )
+    }
     var incoming by remember { mutableStateOf<IncomingCall?>(null) }
+    var windowVisible by remember { mutableStateOf(true) }
+    var trayReady by remember { mutableStateOf(false) }
+    var trayUnavailable by remember { mutableStateOf(false) }
+    var notificationFailure by remember { mutableStateOf(false) }
+    var showRequest by remember { mutableStateOf(0) }
+    val mainWindowState = rememberWindowState(width = 340.dp, height = 540.dp)
+
 
     LaunchedEffect(Unit) { node.start() }
 
     LaunchedEffect(Unit) {
         node.calls.collect { call ->
             Tone.play(call.urgent)
-            if (call.urgent) {
-                incoming = call
-            } else {
-                // Обычный вызов не требует подтверждения глазами: звук и есть сообщение.
-                node.markSeen(call.keyHex, call.callId)
-            }
+            // Плашка одна: вытесненный вызов считается увиденным, иначе у его
+            // отправителя навсегда останется «доставлено».
+            incoming?.let { previous -> node.markSeen(previous.keyHex, previous.callId) }
+            incoming = call
+            val notificationText = if (call.urgent) strings.urgent else strings.wantsAttention
+            // Предупреждение снимается, как только уведомления снова работают.
+            notificationFailure = !DesktopNotifications.show(call.displayName, notificationText, call.urgent)
         }
     }
 
     val quit = {
+        Tone.stop()
         node.stop()
         exitApplication()
     }
 
+    LaunchedEffect(Unit) {
+        try {
+            PanelIndicator().run(strings) { event ->
+                when (event) {
+                    PanelEvent.READY -> { trayReady = true; trayUnavailable = false }
+                    PanelEvent.UNAVAILABLE -> { trayReady = false; trayUnavailable = true; windowVisible = true }
+                    PanelEvent.OPEN -> { windowVisible = true; mainWindowState.isMinimized = false; showRequest++ }
+                    PanelEvent.PAUSE -> node.pause(15)
+                    PanelEvent.RESUME -> node.pause(null)
+                    PanelEvent.QUIT -> quit()
+                }
+            }
+            trayReady = false
+            trayUnavailable = true
+            windowVisible = true
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            System.err.println("NearPing panel unavailable: ${error.message}")
+            trayReady = false
+            trayUnavailable = true
+            windowVisible = true
+        }
+    }
+    LaunchedEffect(Unit) {
+        delay(5000)
+        if (!trayReady) trayUnavailable = true
+    }
+
     Window(
-        onCloseRequest = quit,
+        visible = windowVisible,
+        onCloseRequest = { if (trayReady) windowVisible = false else mainWindowState.isMinimized = true },
         title = strings.appName,
-        state = rememberWindowState(width = 420.dp, height = 620.dp),
+        undecorated = false,
+        resizable = true,
+        icon = painterResource("nearping.png"),
+        state = mainWindowState,
+        onKeyEvent = { event ->
+            if (event.key == Key.Escape && event.type == KeyEventType.KeyUp) {
+                if (trayReady) windowVisible = false else mainWindowState.isMinimized = true
+                true
+            } else false
+        },
     ) {
-        EarshotTheme {
-            PeerListScreen(
-                state = state,
-                strings = strings,
-                onRename = node::rename,
-                onCall = { key, urgent -> node.call(key, urgent) },
-                onAdd = node::requestPairing,
-                onAccept = node::acceptPairing,
-                onDecline = node::rejectPairing,
-                onPause = node::pause,
-                onQuit = quit,
-            )
+        LaunchedEffect(showRequest, windowVisible) {
+            if (windowVisible) SwingUtilities.invokeLater {
+                if (showRequest == 1 && trayReady) {
+                    val pointer = MouseInfo.getPointerInfo()
+                    val config = pointer.device.defaultConfiguration
+                    val bounds = config.bounds
+                    val insets = Toolkit.getDefaultToolkit().getScreenInsets(config)
+                    val left = bounds.x + insets.left
+                    val top = bounds.y + insets.top
+                    val right = bounds.x + bounds.width - insets.right - window.width
+                    val bottom = bounds.y + bounds.height - insets.bottom - window.height
+                    window.setLocation((pointer.location.x - window.width + 20).coerceIn(left, maxOf(left, right)),
+                        (pointer.location.y + 12).coerceIn(top, maxOf(top, bottom)))
+                }
+                window.toFront()
+                window.requestFocus()
+            }
+        }
+        EarshotTheme(themeMode) {
+            Surface(
+                modifier = Modifier.fillMaxSize(),
+                color = MaterialTheme.colorScheme.background,
+                contentColor = MaterialTheme.colorScheme.onBackground,
+            ) {
+                Column {
+                    if (notificationFailure) {
+                        Text(strings.notificationFailed, modifier = Modifier.fillMaxWidth().padding(12.dp),
+                            style = MaterialTheme.typography.bodySmall)
+                    }
+                    if (trayUnavailable) {
+                        Text(strings.trayUnavailable, modifier = Modifier.fillMaxWidth().padding(12.dp),
+                            style = MaterialTheme.typography.bodySmall)
+                    }
+                    PeerListScreen(
+                        state = state,
+                        strings = strings,
+                        themeMode = themeMode,
+                        onTheme = { mode ->
+                            themeMode = mode
+                            preferences.put("theme", mode.name)
+                        },
+                        onRename = node::rename,
+                        onCall = { key, urgent -> node.call(key, urgent) },
+                        onAdd = node::requestPairing,
+                        onAccept = node::acceptPairing,
+                        onDecline = node::rejectPairing,
+                        onForget = node::forget,
+                        onPause = node::pause,
+                        onQuit = quit,
+                        onSelectNetwork = node::selectNetworkInterface,
+                        onRefreshNetworks = node::refreshNetworkInterfaces,
+                    )
+                }
+            }
         }
     }
 
     incoming?.let { call ->
-        UrgentWindow(
+        val edges = remember { ScreenEdges() }
+        if (call.urgent) {
+            DisposableEffect(call.callId) {
+                edges.show()
+                onDispose { edges.close() }
+            }
+        }
+        IncomingWindow(
             call = call,
             strings = strings,
+            themeMode = themeMode,
             onSeen = {
                 Tone.stop()
                 node.markSeen(call.keyHex, call.callId)
@@ -88,11 +201,11 @@ fun main() = application {
 }
 
 /**
- * Срочный вызов: отдельное окно поверх всего, без рамки.
- * Системные уведомления тут не участвуют — их глушит «не беспокоить».
+ * Входящий Ping: отдельная плашка поверх остальных окон.
+ * Сирена и красные края включаются только для срочного Ping.
  */
 @Composable
-private fun UrgentWindow(call: IncomingCall, strings: Strings, onSeen: () -> Unit) {
+private fun IncomingWindow(call: IncomingCall, strings: Strings, themeMode: ThemeMode, onSeen: () -> Unit) {
     var remaining by remember(call.callId) { mutableStateOf(1f) }
 
     LaunchedEffect(call.callId) {
@@ -116,18 +229,25 @@ private fun UrgentWindow(call: IncomingCall, strings: Strings, onSeen: () -> Uni
             position = WindowPosition(Alignment.TopCenter),
         ),
     ) {
-        EarshotTheme {
+        EarshotTheme(themeMode) {
             val colors = LocalEarshotColors.current
-            Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
+            Surface(
+                modifier = Modifier.fillMaxSize(),
+                color = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.onSurface,
+            ) {
+              Column(Modifier.fillMaxSize()) {
                 Row(
                     Modifier.weight(1f).fillMaxWidth().padding(horizontal = 18.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Box(
-                        Modifier.size(44.dp).clip(CircleShape).background(colors.urgent),
+                        Modifier.size(44.dp).clip(CircleShape)
+                            .background(if (call.urgent) colors.urgent else colors.accent),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Text("!", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                        Image(painterResource("nearping.png"), contentDescription = "NearPing",
+                            modifier = Modifier.size(40.dp))
                     }
                     Spacer(Modifier.width(14.dp))
                     Column(Modifier.weight(1f)) {
@@ -139,15 +259,15 @@ private fun UrgentWindow(call: IncomingCall, strings: Strings, onSeen: () -> Uni
                             overflow = TextOverflow.Ellipsis,
                         )
                         Text(
-                            strings.urgent,
+                            if (call.urgent) strings.urgent else strings.wantsAttention,
                             style = MaterialTheme.typography.bodySmall,
-                            color = colors.urgent,
+                            color = if (call.urgent) colors.urgent else colors.accent,
                             maxLines = 1,
                         )
                     }
                     Spacer(Modifier.width(12.dp))
                     Button(onClick = onSeen, shape = RoundedCornerShape(Yaru.buttonRadius)) {
-                        Text(strings.gotIt)
+                        Text(strings.stop)
                     }
                 }
                 Box(
@@ -157,9 +277,10 @@ private fun UrgentWindow(call: IncomingCall, strings: Strings, onSeen: () -> Uni
                     Box(
                         Modifier.fillMaxHeight()
                             .fillMaxWidth(remaining.coerceIn(0f, 1f))
-                            .background(colors.urgent)
+                            .background(if (call.urgent) colors.urgent else colors.accent)
                     )
                 }
+              }
             }
         }
     }
