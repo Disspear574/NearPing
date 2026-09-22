@@ -10,6 +10,7 @@ struct PeerRowView: View {
     let onUrgent: () -> Void
 
     @State private var hovered = false
+    private var accent: Color { SystemAccent.shared.color }
 
     var body: some View {
         HStack(spacing: 8) {
@@ -62,7 +63,9 @@ struct PeerRowView: View {
         .padding(.vertical, 5)
         .background(
             RoundedRectangle(cornerRadius: Tokens.Metric.rowRadius, style: .continuous)
-                .fill(Color.primary.opacity(hovered ? 0.07 : 0))
+                // Подсветка лёгкой примесью акцента, а не серым: так видно,
+                // что строка живая и принадлежит этому приложению.
+                .fill(hovered ? accent.opacity(0.14) : Color.clear)
         )
         .onHover { hovered = $0 }
     }
