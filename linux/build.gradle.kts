@@ -1,3 +1,4 @@
+import java.security.MessageDigest
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 
 plugins {
@@ -12,7 +13,11 @@ kotlin {
 
 dependencies {
     implementation(project(":core"))
-    implementation(compose.desktop.currentOs)
+    implementation(when (providers.gradleProperty("linuxTarget").orNull) {
+        "x64" -> compose.desktop.linux_x64
+        "arm64" -> compose.desktop.linux_arm64
+        else -> compose.desktop.currentOs
+    })
     implementation(compose.material3)
     implementation(libs.coroutines.core)
 }
@@ -35,7 +40,7 @@ compose.desktop {
             // .deb и AppImage собираются только на Linux: jpackage делает пакет
             // той системы, на которой запущен.
             targetFormats(TargetFormat.Deb, TargetFormat.AppImage, TargetFormat.Dmg)
-            packageName = "earshot"
+            packageName = "nearping"
             packageVersion = "0.1.0"
             description = "Call a colleague who is wearing headphones"
             vendor = "disspear574"
@@ -44,5 +49,20 @@ compose.desktop {
                 appCategory = "Utility"
             }
         }
+    }
+}
+
+// Portable bundle can be assembled on macOS with Linux native dependencies.
+tasks.register<Sync>("portableLibs") {
+    dependsOn(tasks.named("jar"))
+    into(layout.buildDirectory.dir("portable/lib"))
+    from(tasks.named("jar"))
+    from(configurations.runtimeClasspath) {
+        eachFile {
+            val hash = MessageDigest.getInstance("SHA-256").digest(file.readBytes())
+                .joinToString("") { "%02x".format(it) }
+            name = "${hash.take(16)}-$name"
+        }
+        duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     }
 }
