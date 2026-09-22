@@ -26,7 +26,7 @@ private struct PopoverView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             header
-            Divider().padding(.horizontal, 12)
+            Rectangle().fill(Tokens.Palette.separator).frame(height: 1).padding(.horizontal, 12)
 
             if runtime.localNetworkDenied {
                 localNetworkWarning
@@ -65,10 +65,12 @@ private struct PopoverView: View {
                 }
             }
 
-            Divider().padding(.horizontal, 12).padding(.top, 8)
+            Rectangle().fill(Tokens.Palette.separator).frame(height: 1).padding(.horizontal, 12).padding(.top, 8)
             footer
         }
         .frame(width: Tokens.Metric.popoverWidth)
+        // Сплошной фон: на материале контраст зависит от обоев под окном.
+        .background(Tokens.Palette.background)
         .onAppear { nameDraft = runtime.myDisplayName }
     }
 
@@ -165,6 +167,7 @@ private struct PopoverView: View {
 
             Button(String(localized: "Accept")) { runtime.acceptPairing(row) }
                 .buttonStyle(.borderedProminent)
+                .tint(SystemAccent.shared.color)
                 .controlSize(.small)
             Button(String(localized: "Decline")) { runtime.rejectPairing(row) }
                 .buttonStyle(.bordered)
@@ -191,6 +194,7 @@ private struct PopoverView: View {
 
             Button(String(localized: "Add")) { runtime.requestPairing(row) }
                 .buttonStyle(.borderedProminent)
+                .tint(SystemAccent.shared.color)
                 .controlSize(.small)
                 .disabled(!row.isOnline)
         }
