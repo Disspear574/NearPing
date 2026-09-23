@@ -10,7 +10,7 @@ project: core
 	cd macos && xcodegen generate
 
 build: project
-	cd macos && xcodebuild -project Earshot.xcodeproj -scheme Earshot \
+	cd macos && xcodebuild -project NearPing.xcodeproj -scheme NearPing \
 		-configuration Debug -derivedDataPath .build -allowProvisioningUpdates build
 
 run: build
@@ -19,7 +19,7 @@ run: build
 # Release-сборка и образ для переноса на другую машину.
 # Подпись локальная (ad-hoc): Gatekeeper на чужом маке потребует явного разрешения.
 dmg: project
-	cd macos && xcodebuild -project Earshot.xcodeproj -scheme Earshot \
+	cd macos && xcodebuild -project NearPing.xcodeproj -scheme NearPing \
 		-configuration Release -derivedDataPath .build -allowProvisioningUpdates build
 	rm -rf macos/.dmg && mkdir -p macos/.dmg
 	cp -R macos/.build/Build/Products/Release/NearPing.app macos/.dmg/
@@ -31,4 +31,4 @@ dmg: project
 
 clean:
 	./gradlew clean
-	rm -rf macos/.build macos/.dmg macos/Earshot.xcodeproj macos/Frameworks NearPing.dmg
+	rm -rf macos/.build macos/.dmg macos/NearPing.xcodeproj macos/Frameworks NearPing.dmg

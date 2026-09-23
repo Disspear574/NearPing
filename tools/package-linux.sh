@@ -33,7 +33,7 @@ cat > "$stage/nearping" <<'LAUNCHER'
 #!/bin/sh
 # Запуск NearPing из любого каталога: Java лежит рядом, системная не нужна.
 dir="$(cd "$(dirname "$0")" && pwd)"
-exec "$dir/jre/bin/java" -Xss2m -cp "$dir/lib/*" com.disspear574.earshot.linux.MainKt "$@"
+exec "$dir/jre/bin/java" -Xss2m -cp "$dir/lib/*" com.disspear574.nearping.linux.MainKt "$@"
 LAUNCHER
 chmod +x "$stage/nearping" "$stage/jre/bin/"*
 
@@ -47,7 +47,7 @@ Java включена, ставить ничего не нужно.
   sudo apt install python3-gi gir1.2-gtk-3.0 gir1.2-ayatanaappindicator3-0.1 libnotify-bin
 Без них приложение работает окном; значка в панели и системных уведомлений не будет.
 
-Данные: ~/.local/share/earshot (ключ личности, контакты, выбранная сеть).
+Данные: ~/.local/share/nearping (ключ личности, контакты, выбранная сеть).
 TXT
 
 ( cd "$out" && tar -czf "$name.tar.gz" "$name" && shasum -a 256 "$name.tar.gz" > SHA256SUMS.txt )

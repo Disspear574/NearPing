@@ -23,12 +23,12 @@ local.properties
 .claude/scratch/
 
 # Генерируется XcodeGen и Gradle — в git не место
-macos/Earshot.xcodeproj/
+macos/NearPing.xcodeproj/
 macos/Frameworks/
 macos/.build/
 
 # Собирается make dmg
-Earshot.dmg
+NearPing.dmg
 macos/.dmg/
 
 # Подпись у каждого своя
