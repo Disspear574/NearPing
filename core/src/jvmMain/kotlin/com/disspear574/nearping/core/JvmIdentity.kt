@@ -1,6 +1,5 @@
 package com.disspear574.nearping.core
 
-import org.bouncycastle.crypto.params.Ed25519PrivateKeyParameters
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermission
@@ -23,7 +22,7 @@ class FileIdentityStore(private val directory: Path) : KeyStore {
     val signer: Signer by lazy { JvmSigner(privateKey) }
 
     override fun loadOrCreate(): Identity {
-        val public = Ed25519PrivateKeyParameters(privateKey, 0).generatePublicKey().encoded
+        val public = ed25519PublicKey(privateKey)
         return Identity(public, storedName())
     }
 
