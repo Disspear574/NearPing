@@ -1,6 +1,5 @@
 package com.disspear574.nearping.core
 
-import org.bouncycastle.crypto.params.Ed25519PrivateKeyParameters
 import java.security.SecureRandom
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
@@ -90,7 +89,7 @@ class JvmCryptoTest {
 class JvmSignerTest {
     private fun keyPair(): kotlin.Pair<ByteArray, ByteArray> {
         val priv = ByteArray(32).also { SecureRandom().nextBytes(it) }
-        val pub = Ed25519PrivateKeyParameters(priv, 0).generatePublicKey().encoded
+        val pub = ed25519PublicKey(priv)
         return priv to pub
     }
 

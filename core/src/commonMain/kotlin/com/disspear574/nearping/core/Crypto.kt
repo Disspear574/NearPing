@@ -4,7 +4,7 @@ package com.disspear574.nearping.core
 class EphemeralKeyPair(val privateKey: ByteArray, val publicKey: ByteArray)
 
 /**
- * Криптографические примитивы платформы. На Apple — CryptoKit, на JVM — BouncyCastle.
+ * Криптографические примитивы платформы. На Apple — CryptoKit, на JVM — встроенные средства Java 21.
  * Ядро само ничего не считает: своя реализация криптографии — верный способ ошибиться.
  */
 interface Crypto {

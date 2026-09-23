@@ -30,7 +30,6 @@ kotlin {
         jvmMain.dependencies {
             // Сырые ключи X25519 и Ed25519 первым классом: в JDK они кодируются
             // через BigInteger, и совпасть с CryptoKit побайтово там легко не получится.
-            implementation(libs.bouncycastle)
             implementation(libs.jmdns)
         }
     }
