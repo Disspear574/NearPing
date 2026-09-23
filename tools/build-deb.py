@@ -15,6 +15,7 @@
 Каждый родительский каталог объявляется в data.tar явно и раньше своих файлов:
 в test3 его не было, и dpkg падал на «unable to create …/lib/….dpkg-new».
 Владелец всего — root:root, права нормализуются (0755 каталоги и исполняемые, 0644 прочее).
+Сжатие xz: dpkg понимает его с Debian 6 / Ubuntu 10.04 и жмёт Java заметно лучше gzip.
 """
 import hashlib
 import io
@@ -64,7 +65,7 @@ def normalized(info: tarfile.TarInfo) -> tarfile.TarInfo:
 class DataTar:
     def __init__(self) -> None:
         self.buffer = io.BytesIO()
-        self.tar = tarfile.open(fileobj=self.buffer, mode="w:gz", format=tarfile.GNU_FORMAT)
+        self.tar = tarfile.open(fileobj=self.buffer, mode="w:xz", format=tarfile.GNU_FORMAT, preset=9)
         self.dirs: set[str] = set()
         self.md5: list[str] = []
         self.size = 0
@@ -120,7 +121,7 @@ class DataTar:
 
 def control_tar(control: str, md5sums: str) -> bytes:
     buffer = io.BytesIO()
-    with tarfile.open(fileobj=buffer, mode="w:gz", format=tarfile.GNU_FORMAT) as tar:
+    with tarfile.open(fileobj=buffer, mode="w:xz", format=tarfile.GNU_FORMAT) as tar:
         root = tarfile.TarInfo(".")
         root.type = tarfile.DIRTYPE
         tar.addfile(normalized(root))
@@ -174,8 +175,8 @@ def main() -> None:
     )
     out.write_bytes(ar([
         ("debian-binary", b"2.0\n"),
-        ("control.tar.gz", control_tar(control, "\n".join(data.md5) + "\n")),
-        ("data.tar.gz", data_bytes),
+        ("control.tar.xz", control_tar(control, "\n".join(data.md5) + "\n")),
+        ("data.tar.xz", data_bytes),
     ]))
     print(f"готово: {out}")
 
