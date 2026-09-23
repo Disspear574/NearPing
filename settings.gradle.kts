@@ -15,6 +15,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Earshot"
+rootProject.name = "NearPing"
 include(":core")
 include(":linux")

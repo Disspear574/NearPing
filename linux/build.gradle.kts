@@ -26,16 +26,16 @@ dependencies {
 tasks.register<JavaExec>("probe") {
     group = "verification"
     description = "Поднимает узел и печатает, кого нашёл в сети"
-    mainClass = "com.disspear574.earshot.linux.ProbeKt"
+    mainClass = "com.disspear574.nearping.linux.ProbeKt"
     classpath = sourceSets["main"].runtimeClasspath
     args = listOf(project.findProperty("seconds")?.toString() ?: "20")
-    systemProperty("earshot.debug", "1")
+    systemProperty("nearping.debug", "1")
     standardOutput = System.out
 }
 
 compose.desktop {
     application {
-        mainClass = "com.disspear574.earshot.linux.MainKt"
+        mainClass = "com.disspear574.nearping.linux.MainKt"
         nativeDistributions {
             // .deb и AppImage собираются только на Linux: jpackage делает пакет
             // той системы, на которой запущен.
