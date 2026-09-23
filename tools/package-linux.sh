@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Собирает переносимый архив NearPing для Linux x64: jar-файлы с linux-нативами,
+# Собирает NearPing для Linux x64 — переносимый архив и .deb: jar-файлы с linux-нативами,
 # официальный JRE Temurin с проверкой SHA-256 и запускающий скрипт.
 # Собирается на macOS: jpackage тут не нужен. Результат — releases/<label>/.
 #
@@ -50,6 +50,10 @@ Java включена, ставить ничего не нужно.
 Данные: ~/.local/share/nearping (ключ личности, контакты, выбранная сеть).
 TXT
 
-( cd "$out" && tar -czf "$name.tar.gz" "$name" && shasum -a 256 "$name.tar.gz" > SHA256SUMS.txt )
+# Версия пакета: 0.1.0~test16 — «~» ставит тестовую сборку ниже будущей 0.1.0.
+deb="nearping_0.1.0~${label}_amd64.deb"
+python3 tools/build-deb.py "$stage" "$out/$deb" "0.1.0~$label"
+
+( cd "$out" && tar -czf "$name.tar.gz" "$name" && shasum -a 256 "$name.tar.gz" "$deb" > SHA256SUMS.txt )
 rm -rf "$stage"
-echo "готово: $out/$name.tar.gz"
+echo "готово: $out/$name.tar.gz, $out/$deb"
