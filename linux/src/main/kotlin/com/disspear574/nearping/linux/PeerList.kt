@@ -70,8 +70,10 @@ fun PeerListScreen(
                 Text(state.myDisplayName, style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1,
                     overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 120.dp))
-                TextButton(onClick = { showingSettings = true }, modifier = Modifier.size(34.dp),
-                    contentPadding = PaddingValues(0.dp)) { Text("⚙", fontSize = 20.sp) }
+                IconButton(onClick = { showingSettings = true }, modifier = Modifier.size(34.dp)) {
+                    Icon(NearPingIcons.Settings, contentDescription = strings.settings,
+                        modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
         }
         AnimatedContent(targetState = showingSettings, label = "settings") { settingsVisible ->
@@ -167,7 +169,8 @@ fun PeerListScreen(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         val paused = state.pausedUntilEpochSeconds != null
-                        if (paused) Text("Ⅱ", color = LocalNearPingColors.current.paused, fontWeight = FontWeight.Bold)
+                        if (paused) Icon(NearPingIcons.Pause, contentDescription = null,
+                            modifier = Modifier.size(12.dp), tint = LocalNearPingColors.current.paused)
                         else Box(Modifier.size(10.dp).clip(CircleShape).background(LocalNearPingColors.current.online))
                         Spacer(Modifier.width(8.dp))
                         Text(if (paused) strings.paused else strings.available,
@@ -175,7 +178,11 @@ fun PeerListScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Spacer(Modifier.weight(1f))
                         TextButton(onClick = { if (paused) onPause(null) else showPause = true }) {
-                            Text(if (paused) strings.resume else "Ⅱ ${strings.pause}")
+                            if (!paused) {
+                                Icon(NearPingIcons.Pause, contentDescription = null, modifier = Modifier.size(14.dp))
+                                Spacer(Modifier.width(6.dp))
+                            }
+                            Text(if (paused) strings.resume else strings.pause)
                         }
                     }
 
@@ -300,7 +307,10 @@ fun PeerListScreen(
             confirmButton = {
                 Button(
                     onClick = { onForget(peer.keyHex); contactToRemove = null },
-                    colors = ButtonDefaults.buttonColors(containerColor = LocalNearPingColors.current.urgent),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = LocalNearPingColors.current.urgentFill,
+                        contentColor = Color.White,
+                    ),
                 ) { Text(strings.removeContact) }
             },
             dismissButton = {
@@ -371,8 +381,10 @@ private fun ContactRow(
 
         var actions by remember { mutableStateOf(false) }
         Box {
-            TextButton(onClick = { actions = true }, modifier = Modifier.width(32.dp),
-                contentPadding = PaddingValues(0.dp)) { Text("⋯") }
+            IconButton(onClick = { actions = true }, modifier = Modifier.size(34.dp)) {
+                Icon(NearPingIcons.More, contentDescription = strings.contactActions,
+                    modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             DropdownMenu(expanded = actions, onDismissRequest = { actions = false }) {
                 Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(strings.holdForUrgent, modifier = Modifier.widthIn(max = 200.dp))
@@ -427,7 +439,7 @@ private fun HoldButton(enabled: Boolean, label: String, onFire: () -> Unit) {
 
     Box(
         Modifier.size(30.dp).clip(CircleShape)
-            .background(if (enabled) colors.urgent else colors.urgent.copy(alpha = 0.3f))
+            .background(if (enabled) colors.urgentFill else colors.urgentFill.copy(alpha = 0.3f))
             .pointerInput(enabled) {
                 if (!enabled) return@pointerInput
                 detectTapGestures(

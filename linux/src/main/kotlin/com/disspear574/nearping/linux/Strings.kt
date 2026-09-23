@@ -9,6 +9,7 @@ import java.util.Locale
 data class Strings(
     val appName: String = "NearPing",
     val settings: String,
+    val contactActions: String,
     val back: String,
     val appearance: String,
     val systemTheme: String,
@@ -57,7 +58,7 @@ data class Strings(
 ) {
     companion object {
         private val english = Strings(
-            settings = "Settings", back = "Back",
+            settings = "Settings", back = "Back", contactActions = "Contact actions",
             appearance = "Appearance", systemTheme = "System", lightTheme = "Light", darkTheme = "Dark",
             save = "Save", available = "Available", stop = "Stop",
             removeContact = "Remove contact", removeContactQuestion = "Remove contact?", cancel = "Cancel",
@@ -97,7 +98,7 @@ data class Strings(
         )
 
         private val russian = Strings(
-            settings = "Настройки", back = "Назад",
+            settings = "Настройки", back = "Назад", contactActions = "Действия с контактом",
             appearance = "Тема", systemTheme = "Системная", lightTheme = "Светлая", darkTheme = "Тёмная",
             save = "Сохранить", available = "На связи", stop = "Стоп",
             removeContact = "Удалить контакт", removeContactQuestion = "Удалить контакт?", cancel = "Отмена",

@@ -37,7 +37,14 @@ enum Tokens {
 
         /// Системным акцентом не подменяется никогда: у человека с зелёным акцентом
         /// срочный вызов обязан остаться красным.
-        static let urgent = dynamic(light: 0xA53F32, dark: 0xE9A092)
+        ///
+        /// Два токена, потому что одного не хватает: текст на тёмном фоне требует
+        /// светлого красного, а заливка под белым «!» — тёмного. Прежний единый
+        /// `#E9A092` на тёмной теме выходил пастельным и срочность не читалась.
+        /// `urgent` — текст и обводка (≥ 4.5:1 к фону), `urgentFill` — заливка
+        /// с белым содержимым (белый к ней ≥ 4.5:1).
+        static let urgent = dynamic(light: 0xA53F32, dark: 0xFF8A70)
+        static let urgentFill = dynamic(light: 0xB23A2C, dark: 0xD63A2A)
 
         static let separator = Color.primary.opacity(0.09)
         static let rowHover = Color.primary.opacity(0.06)

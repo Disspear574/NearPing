@@ -243,7 +243,7 @@ private fun IncomingWindow(call: IncomingCall, strings: Strings, themeMode: Them
                 ) {
                     Box(
                         Modifier.size(44.dp).clip(CircleShape)
-                            .background(if (call.urgent) colors.urgent else colors.accent),
+                            .background(if (call.urgent) colors.urgentFill else colors.accent),
                         contentAlignment = Alignment.Center,
                     ) {
                         Image(painterResource("nearping.png"), contentDescription = "NearPing",
@@ -266,7 +266,13 @@ private fun IncomingWindow(call: IncomingCall, strings: Strings, themeMode: Them
                         )
                     }
                     Spacer(Modifier.width(12.dp))
-                    Button(onClick = onSeen, shape = RoundedCornerShape(Yaru.buttonRadius)) {
+                    Button(
+                        onClick = onSeen,
+                        shape = RoundedCornerShape(Yaru.buttonRadius),
+                        colors = if (call.urgent) {
+                            ButtonDefaults.buttonColors(containerColor = colors.urgentFill, contentColor = Color.White)
+                        } else ButtonDefaults.buttonColors(),
+                    ) {
                         Text(strings.stop)
                     }
                 }
@@ -277,7 +283,7 @@ private fun IncomingWindow(call: IncomingCall, strings: Strings, themeMode: Them
                     Box(
                         Modifier.fillMaxHeight()
                             .fillMaxWidth(remaining.coerceIn(0f, 1f))
-                            .background(if (call.urgent) colors.urgent else colors.accent)
+                            .background(if (call.urgent) colors.urgentFill else colors.accent)
                     )
                 }
               }
