@@ -5,8 +5,11 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
-/** Подтверждение: дошло до машины, затем человек увидел. */
-enum class AckState { DELIVERED, SEEN }
+/**
+ * Подтверждение: дошло до машины, затем человек увидел. `RATE_LIMITED` — дошло,
+ * но получатель отбросил вызов по лимиту частоты: человек его не услышал.
+ */
+enum class AckState { DELIVERED, SEEN, RATE_LIMITED }
 
 @Serializable
 sealed interface Message {

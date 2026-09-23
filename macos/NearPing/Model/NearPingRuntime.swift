@@ -242,6 +242,7 @@ final class NearPingRuntime {
             case .delivered: owner.setStatus(keyHex, String(localized: "delivered"), .neutral)
             case .seen: owner.setStatus(keyHex, String(localized: "seen it"), .good)
             case .failed: owner.setStatus(keyHex, String(localized: "not delivered"), .failed)
+            case .rateLimited: owner.setStatus(keyHex, String(localized: "not delivered: too often"), .failed)
             default: break
             }
         }

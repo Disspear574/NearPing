@@ -42,6 +42,7 @@
 "Your name" = "Your name";
 "declined" = "declined";
 "delivered" = "delivered";
+"not delivered: too often" = "not delivered: too often";
 "not delivered" = "not delivered";
 "offline" = "offline";
 "online" = "online";
