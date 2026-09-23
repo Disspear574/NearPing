@@ -20,7 +20,7 @@ interface Transport {
 }
 
 /** Состояние вызова у отправителя. */
-enum class CallState { SENT, DELIVERED, SEEN, FAILED }
+enum class CallState { SENT, DELIVERED, SEEN, FAILED, RATE_LIMITED }
 
 /** Снимок пира для интерфейса: плоский, чтобы дёшево пересекать мост в Swift. */
 class PeerView(
@@ -339,7 +339,11 @@ class Engine(
                 is Message.Ping -> onPing(peer, message)
 
                 is Message.Ack -> {
-                    val state = if (message.state == AckState.SEEN) CallState.SEEN else CallState.DELIVERED
+                    val state = when (message.state) {
+                        AckState.DELIVERED -> CallState.DELIVERED
+                        AckState.SEEN -> CallState.SEEN
+                        AckState.RATE_LIMITED -> CallState.RATE_LIMITED
+                    }
                     listener.onCallState(keyHex, message.id, state)
                 }
 
@@ -359,14 +363,23 @@ class Engine(
         }
 
         private fun onPing(peer: Peer, ping: Message.Ping) {
-            // Подтверждение доставки уходит всегда: отправитель должен различать
-            // «не дошло» и «дошло, но человек закрылся паузой».
-            sessions[connectionId]?.sendMessage(Message.Ack(ping.id, AckState.DELIVERED))
             // Пауза глушит оба типа вызова, включая срочный. Иначе паузе нет доверия.
-            if (isPaused) return
+            // Подтверждение при этом уходит: отправитель должен различать «не дошло»
+            // и «дошло, но человек закрылся паузой» — паузу он и так видит в списке.
+            if (isPaused) {
+                sessions[connectionId]?.sendMessage(Message.Ack(ping.id, AckState.DELIVERED))
+                return
+            }
+            // Отброшенный по лимиту вызов не «доставлен»: человек его не услышал.
+            // У отправителя такой же лимит, но задержка в сети может свести два
+            // вызова вплотную, и тогда он должен узнать правду.
             val now = clock.nowEpochSeconds()
-            if (incomingLimiter.remaining(peer.keyHex, ping.urgent, now) > 0) return
+            if (incomingLimiter.remaining(peer.keyHex, ping.urgent, now) > 0) {
+                sessions[connectionId]?.sendMessage(Message.Ack(ping.id, AckState.RATE_LIMITED))
+                return
+            }
             incomingLimiter.record(peer.keyHex, ping.urgent, now)
+            sessions[connectionId]?.sendMessage(Message.Ack(ping.id, AckState.DELIVERED))
             listener.onIncomingCall(peer, ping.id, ping.urgent)
         }
     }

@@ -251,7 +251,7 @@ fun PeerListScreen(
                                 Column(Modifier.weight(1f)) {
                                     Text(peer.displayName, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                     Text(
-                                        state.statuses[peer.keyHex]?.text ?: peer.fingerprint,
+                                        state.statuses[peer.keyHex]?.let { strings.status(it.event) } ?: peer.fingerprint,
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         maxLines = 1,
@@ -358,7 +358,7 @@ private fun ContactRow(
         Column(Modifier.weight(1f)) {
             Text(peer.displayName, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(
-                status?.text ?: when {
+                status?.let { strings.status(it.event) } ?: when {
                     peer.isPaused -> strings.pausedUntil
                     peer.isOnline -> strings.online
                     else -> strings.offline

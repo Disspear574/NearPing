@@ -29,8 +29,22 @@ data class NodeState(
 
 data class NetworkInterfaceOption(val name: String, val addresses: String, val multicast: Boolean)
 
-data class CallStatus(val text: String, val kind: Kind) {
+/**
+ * Что случилось с последним вызовом или запросом. Текст узел не хранит: строку
+ * на языке системы подбирает интерфейс, иначе на русской Ubuntu статус шёл по-английски.
+ */
+data class CallStatus(val event: Event) {
     enum class Kind { NEUTRAL, GOOD, WARN, BAD }
+    enum class Event(val kind: Kind) {
+        SENT(Kind.NEUTRAL),
+        DELIVERED(Kind.NEUTRAL),
+        SEEN(Kind.GOOD),
+        NOT_DELIVERED(Kind.BAD),
+        TOO_OFTEN(Kind.BAD),
+        REQUEST_SENT(Kind.WARN),
+        DECLINED(Kind.BAD),
+    }
+    val kind: Kind get() = event.kind
 }
 
 /** Входящий вызов, который интерфейс должен показать. */
@@ -158,13 +172,12 @@ class NearPingNode(directory: Path) {
 
     fun call(keyHex: String, urgent: Boolean) = onWorker {
         val id = engine.call(keyHex, urgent)
-        status(keyHex, if (id == null) CallStatus("not delivered", CallStatus.Kind.BAD)
-                       else CallStatus("sent", CallStatus.Kind.NEUTRAL))
+        status(keyHex, CallStatus(if (id == null) CallStatus.Event.NOT_DELIVERED else CallStatus.Event.SENT))
     }
 
     fun requestPairing(keyHex: String) = onWorker {
         engine.requestPairing(keyHex)
-        status(keyHex, CallStatus("request sent", CallStatus.Kind.WARN))
+        status(keyHex, CallStatus(CallStatus.Event.REQUEST_SENT))
     }
 
     fun acceptPairing(keyHex: String) = onWorker { engine.acceptPairing(keyHex); publish() }
@@ -212,7 +225,7 @@ class NearPingNode(directory: Path) {
         override fun onPairingRequest(peer: Peer) = publish()
 
         override fun onPairingRejected(peer: Peer) =
-            status(peer.keyHex, CallStatus("declined", CallStatus.Kind.BAD))
+            status(peer.keyHex, CallStatus(CallStatus.Event.DECLINED))
 
         override fun onIncomingCall(peer: Peer, callId: String, urgent: Boolean) {
             _calls.tryEmit(IncomingCall(peer.keyHex, peer.displayName, callId, urgent))
@@ -220,9 +233,10 @@ class NearPingNode(directory: Path) {
 
         override fun onCallState(keyHex: String, callId: String, state: CallState) {
             when (state) {
-                CallState.DELIVERED -> status(keyHex, CallStatus("delivered", CallStatus.Kind.NEUTRAL))
-                CallState.SEEN -> status(keyHex, CallStatus("seen it", CallStatus.Kind.GOOD))
-                CallState.FAILED -> status(keyHex, CallStatus("not delivered", CallStatus.Kind.BAD))
+                CallState.DELIVERED -> status(keyHex, CallStatus(CallStatus.Event.DELIVERED))
+                CallState.SEEN -> status(keyHex, CallStatus(CallStatus.Event.SEEN))
+                CallState.FAILED -> status(keyHex, CallStatus(CallStatus.Event.NOT_DELIVERED))
+                CallState.RATE_LIMITED -> status(keyHex, CallStatus(CallStatus.Event.TOO_OFTEN))
                 CallState.SENT -> Unit
             }
         }

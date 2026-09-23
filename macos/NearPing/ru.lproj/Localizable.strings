@@ -42,6 +42,7 @@
 "Your name" = "Ваше имя";
 "declined" = "Отклонено";
 "delivered" = "Доставлено";
+"not delivered: too often" = "Не дошло: слишком часто";
 "not delivered" = "Не доставлено";
 "offline" = "Не в сети";
 "online" = "В сети";

@@ -1,5 +1,7 @@
 package com.disspear574.nearping.linux
 
+import com.disspear574.nearping.core.CallStatus
+
 import java.util.Locale
 
 /**
@@ -55,7 +57,24 @@ data class Strings(
     val networkFailed: String,
     val networkNotConnected: String,
     val virtualNetworkHint: String,
+    val statusSent: String,
+    val statusDelivered: String,
+    val statusSeen: String,
+    val statusNotDelivered: String,
+    val statusTooOften: String,
+    val statusRequestSent: String,
+    val statusDeclined: String,
 ) {
+    fun status(event: CallStatus.Event): String = when (event) {
+        CallStatus.Event.SENT -> statusSent
+        CallStatus.Event.DELIVERED -> statusDelivered
+        CallStatus.Event.SEEN -> statusSeen
+        CallStatus.Event.NOT_DELIVERED -> statusNotDelivered
+        CallStatus.Event.TOO_OFTEN -> statusTooOften
+        CallStatus.Event.REQUEST_SENT -> statusRequestSent
+        CallStatus.Event.DECLINED -> statusDeclined
+    }
+
     companion object {
         private val english = Strings(
             settings = "Settings", back = "Back", contactActions = "Contact actions",
@@ -72,6 +91,9 @@ data class Strings(
             networkFailed = "Could not use this network. Choose another adapter or try again.",
             networkNotConnected = "Not connected",
             virtualNetworkHint = "VPN discovery works only if the virtual network carries multicast.",
+            statusSent = "sent", statusDelivered = "delivered", statusSeen = "seen it",
+            statusNotDelivered = "not delivered", statusTooOften = "not delivered: too often",
+            statusRequestSent = "request sent", statusDeclined = "declined",
             contacts = "CONTACTS",
             nearby = "NEARBY",
             pairingRequests = "PAIRING REQUESTS",
@@ -112,6 +134,9 @@ data class Strings(
             networkFailed = "Не удалось использовать сеть. Выберите другой адаптер или повторите попытку.",
             networkNotConnected = "Нет подключения",
             virtualNetworkHint = "Для поиска через VPN виртуальная сеть должна пропускать multicast.",
+            statusSent = "Отправлено", statusDelivered = "Доставлено", statusSeen = "Увидел",
+            statusNotDelivered = "Не доставлено", statusTooOften = "Не дошло: слишком часто",
+            statusRequestSent = "Запрос отправлен", statusDeclined = "Отклонено",
             contacts = "КОНТАКТЫ",
             nearby = "РЯДОМ",
             pairingRequests = "ЗАПРОСЫ",

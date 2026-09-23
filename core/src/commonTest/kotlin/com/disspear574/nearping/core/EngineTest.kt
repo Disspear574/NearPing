@@ -280,6 +280,21 @@ class EngineCallTest {
     }
 
     @Test
+    fun pingDroppedByReceiverLimitIsNotReportedDelivered() {
+        val net = TwoMachines()
+        net.connect(); net.pairThem()
+        // Первый вызов задержался в сети; отправитель честно выждал 3 с и позвал снова.
+        val first = net.a.call(net.bHex, false)!!
+        net.clock.now += 3
+        val second = net.a.call(net.bHex, false)!!
+        net.pump()
+        assertEquals(1, net.bEvents.incoming.size)
+        assertTrue(net.aEvents.callStates.contains(first to CallState.DELIVERED))
+        assertTrue(net.aEvents.callStates.contains(second to CallState.RATE_LIMITED))
+        assertFalse(net.aEvents.callStates.contains(second to CallState.DELIVERED))
+    }
+
+    @Test
     fun callReachesTrustedPeer() {
         val net = TwoMachines()
         net.connect(); net.pairThem()
