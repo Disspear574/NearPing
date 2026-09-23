@@ -109,7 +109,7 @@ private struct PopoverView: View {
                     contactToRemove = nil
                 }
                 .buttonStyle(.borderedProminent)
-                .tint(Tokens.Palette.urgent)
+                .tint(Tokens.Palette.urgentFill)
                 .fixedSize()
             }
         }

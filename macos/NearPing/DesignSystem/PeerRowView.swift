@@ -50,7 +50,7 @@ struct PeerRowView: View {
                     .disabled(!canUrgent)
                 Divider()
                 Button(String(localized: "Remove contact"), role: .destructive, action: onRemove)
-            } label: { Image(systemName: "ellipsis").frame(width: 20, height: 30) }
+            } label: { Image(systemName: "ellipsis").font(.system(size: 14, weight: .semibold)).frame(width: 28, height: 30).contentShape(Rectangle()) }
             .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
             .accessibilityLabel(String(localized: "Contact actions"))
             .popover(isPresented: $showingUrgent) {

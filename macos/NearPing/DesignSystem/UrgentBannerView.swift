@@ -15,7 +15,7 @@ struct UrgentBannerView: View {
             HStack(spacing: 14) {
                 Circle()
                     .fill(Color.primary.opacity(0.08))
-                    .overlay(Circle().stroke(bannerColor, lineWidth: 2.5))
+                    .overlay(Circle().stroke(graphicColor, lineWidth: 2.5))
                     .overlay(
                         Image("NearPingMark").resizable().scaledToFit().frame(width: 28, height: 28)
                             .foregroundStyle(Tokens.Palette.primary)
@@ -45,6 +45,7 @@ struct UrgentBannerView: View {
                         .padding(.vertical, 9)
                 }
                 .buttonStyle(.borderedProminent)
+                .tint(isUrgent ? Tokens.Palette.urgentFill : Tokens.Palette.accent)
                 .fixedSize()
             }
             .padding(.horizontal, 20)
@@ -52,7 +53,7 @@ struct UrgentBannerView: View {
 
             GeometryReader { geometry in
                 Rectangle()
-                    .fill(bannerColor)
+                    .fill(graphicColor)
                     .frame(width: geometry.size.width * remaining)
             }
             .frame(height: 3)
@@ -67,8 +68,13 @@ struct UrgentBannerView: View {
         }
     }
 
+    /// Текст «срочно» — светлым красным, полоса и кольцо — насыщенным.
     private var bannerColor: Color {
         isUrgent ? Tokens.Palette.urgent : Tokens.Palette.accent
+    }
+
+    private var graphicColor: Color {
+        isUrgent ? Tokens.Palette.urgentFill : Tokens.Palette.accent
     }
 
 }

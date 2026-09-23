@@ -24,8 +24,12 @@ object Yaru {
     val accentLight = Color(0xFF4E5A40)
     val accentDark = Color(0xFFB5BEA3)
 
+    // Текст и обводка срочного — светлым красным, заливка под белым «!» — насыщенным.
+    // Один токен на обе роли не годился: прежний `#E9A092` на тёмной теме был пастельным.
     val urgentLight = Color(0xFFA53F32)
-    val urgentDark = Color(0xFFE9A092)
+    val urgentDark = Color(0xFFFF8A70)
+    val urgentFillLight = Color(0xFFB23A2C)
+    val urgentFillDark = Color(0xFFD63A2A)
 
     val onlineLight = Color(0xFF4E5A40)
     val onlineDark = Color(0xFFB5BEA3)
@@ -38,6 +42,7 @@ object Yaru {
 data class NearPingColors(
     val accent: Color,
     val urgent: Color,
+    val urgentFill: Color,
     val online: Color,
     val paused: Color,
     val offline: Color,
@@ -50,6 +55,7 @@ val LocalNearPingColors = staticCompositionLocalOf {
     NearPingColors(
         accent = Yaru.accentLight,
         urgent = Yaru.urgentLight,
+        urgentFill = Yaru.urgentFillLight,
         online = Yaru.onlineLight,
         paused = Yaru.pausedLight,
         offline = Yaru.offlineLight,
@@ -131,6 +137,7 @@ fun NearPingTheme(mode: ThemeMode = ThemeMode.SYSTEM, content: @Composable () ->
         LocalNearPingColors provides NearPingColors(
             accent = accent,
             urgent = if (dark) Yaru.urgentDark else Yaru.urgentLight,
+            urgentFill = if (dark) Yaru.urgentFillDark else Yaru.urgentFillLight,
             online = if (dark) Yaru.onlineDark else Yaru.onlineLight,
             paused = if (dark) Yaru.pausedDark else Yaru.pausedLight,
             offline = if (dark) Yaru.offlineDark else Yaru.offlineLight,

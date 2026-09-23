@@ -16,17 +16,19 @@ struct HoldButton: View {
 
     var body: some View {
         ZStack {
+            // Залитый круг, как на Linux: бледный кружок с обводкой не читался
+            // кнопкой и тем более срочной.
             Circle()
-                .fill(Tokens.Palette.urgent.opacity(hovered && isEnabled ? 0.22 : 0.14))
-            Circle()
-                .stroke(Tokens.Palette.urgent.opacity(0.45), lineWidth: 1)
+                .fill(Tokens.Palette.urgentFill)
+                .brightness(hovered && isEnabled ? 0.06 : 0)
             Circle()
                 .trim(from: 0, to: progress)
-                .stroke(Tokens.Palette.urgent, style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
+                .stroke(Color.white, style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
                 .rotationEffect(.degrees(-90))
+                .padding(2)
             Text(verbatim: "!")
-                .font(.system(size: 13, weight: .bold))
-                .foregroundStyle(Tokens.Palette.urgent)
+                .font(.system(size: 14, weight: .heavy))
+                .foregroundStyle(Color.white)
         }
         .frame(width: Tokens.Metric.urgentButton, height: Tokens.Metric.urgentButton)
         .opacity(isEnabled ? 1 : 0.35)
