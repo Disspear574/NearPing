@@ -3,7 +3,7 @@ import Network
 import OSLog
 @preconcurrency import core
 
-/// Куда сеть отдаёт события. Реализуется средой выполнения на главном потоке.
+/// Where the network delivers events; implemented by the runtime on the main thread.
 @MainActor
 protocol NetworkDelegate: AnyObject {
     func networkFoundPeer(_ peer: Peer, endpointKey: String)
@@ -16,10 +16,7 @@ protocol NetworkDelegate: AnyObject {
     func networkLocalNetworkDenied()
 }
 
-/// Bonjour и TCP на Network.framework.
-///
-/// Свой последовательный поток на всё состояние: Network.framework зовёт обратно
-/// со своей очереди, а ядро трогается только с главного потока.
+/// Bonjour and TCP on Network.framework, with its own serial queue because Network.framework calls back on its own queue.
 final class NearPingNetwork: Transport, @unchecked Sendable {
     private let log = Logger(subsystem: "com.disspear574.nearping", category: "network")
     private let queue = DispatchQueue(label: "com.disspear574.nearping.network")
@@ -33,7 +30,7 @@ final class NearPingNetwork: Transport, @unchecked Sendable {
     weak var delegate: NetworkDelegate?
     private var identity: Identity?
 
-    // MARK: запуск
+    // MARK: Start
 
     private func debug(_ text: String) {
         #if DEBUG
@@ -124,8 +121,7 @@ final class NearPingNetwork: Transport, @unchecked Sendable {
         self.browser = browser
     }
 
-    /// Без разрешения на локальную сеть mDNS не работает, а сокет открывается —
-    /// приложение выглядит рабочим и молчит. Отказ надо показывать человеку.
+    // Without local network permission mDNS is silent while the socket still opens, so the app looks fine; the denial must be shown.
     private func reportIfUnauthorised(_ state: NWListener.State) {
         switch state {
         case .failed(let error), .waiting(let error): if isNoAuth(error) { announceDenial() }
@@ -199,8 +195,7 @@ final class NearPingNetwork: Transport, @unchecked Sendable {
 
     func connect(connectionId: String, endpoint: String) {
         queue.async { [self] in
-            // Идентификатор исходящего соединения несёт в себе ключ пира — по нему
-            // и находится адрес, найденный обозревателем.
+            // An outgoing connection id carries the peer key, which finds the address the browser saw.
             let keyHex = connectionId.hasPrefix("out:")
                 ? String(connectionId.dropFirst(4))
                 : connectionId
@@ -226,7 +221,7 @@ final class NearPingNetwork: Transport, @unchecked Sendable {
         }
     }
 
-    // MARK: соединения
+    // MARK: Connections
 
     private func adopt(_ connection: NWConnection, as id: String) {
         connections[id] = connection

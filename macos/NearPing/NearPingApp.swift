@@ -6,11 +6,9 @@ import CoreServices
 struct NearPingApp: App {
     @State private var runtime = NearPingRuntime.shared
 
-    /// Запуск при старте приложения, а не по первому клику: содержимое MenuBarExtra
-    /// не создаётся, пока меню не открыли, и анонс в сети не начался бы вовсе.
+    // Starts at app launch, not first click: MenuBarExtra content is not created until the menu opens, so nothing would be announced.
     init() {
-        // Refresh this bundle's metadata after replacing a test build in Applications.
-        // Notification Center resolves the sender icon through Launch Services.
+        // Refresh bundle metadata after replacing a test build; Notification Center resolves the sender icon via Launch Services.
         let status = LSRegisterURL(Bundle.main.bundleURL as CFURL, true)
         if status != noErr { NSLog("NearPing application registration failed: %d", status) }
         if let url = Bundle.main.url(forResource: "AppIcon", withExtension: "icns"),
@@ -21,8 +19,7 @@ struct NearPingApp: App {
         LoginItem.enableOnFirstLaunch()
     }
 
-    // MenuBarExtra использует размер NSImage, а не SwiftUI frame у label.
-    // Отдельная копия сохраняет исходный размер знака для заголовка попапа.
+    // MenuBarExtra uses the NSImage size, not the SwiftUI label frame; a separate copy keeps the mark size for the popup title.
     private static let menuBarIcon: NSImage = {
         let source = NSImage(named: "NearPingMark")
         let icon = (source?.copy() as? NSImage) ?? NSImage(size: NSSize(width: 18, height: 18))
@@ -120,8 +117,7 @@ private struct PopoverView: View {
     }
 
     private func applyAppearance() {
-        // MenuBarExtra — окно AppKit: его NSColor-палитра не следует одной
-        // preferredColorScheme. nil возвращает отслеживание системной темы.
+        // MenuBarExtra is an AppKit window whose NSColor palette ignores preferredColorScheme; nil restores system tracking.
         NSApp.appearance = appearance == "dark" ? NSAppearance(named: .darkAqua)
             : appearance == "light" ? NSAppearance(named: .aqua) : nil
     }
@@ -179,15 +175,14 @@ private struct PopoverView: View {
             footer
         }
         .frame(width: Tokens.Metric.popoverWidth)
-        // Сплошной фон: на материале контраст зависит от обоев под окном.
+        // Solid background: on a material, contrast depends on the wallpaper.
         .background(Tokens.Palette.background)
         .onAppear { nameDraft = runtime.myDisplayName }
     }
 
     private var contacts: [PeerRow] { runtime.peers.filter(\.isTrusted) }
 
-    /// Неспаренные и отключившиеся не показываются: добавить их нельзя, а в списке
-    /// они выглядят как дубль контакта, который рядом стоит живым.
+    // Unpaired and disconnected peers are hidden: they cannot be added and would look like a duplicate of the live contact.
     private var nearby: [PeerRow] {
         let pendingIds = Set(runtime.pendingRequests.map(\.id))
         return runtime.peers.filter { !$0.isTrusted && $0.isOnline && !pendingIds.contains($0.id) }
@@ -380,7 +375,7 @@ private struct PopoverView: View {
 
     private var footer: some View {
         HStack(spacing: 8) {
-            // Жест удержания ниоткуда не следует — про него надо сказать словами.
+            // The hold gesture is not discoverable, so say it in words.
             Text(String(localized: "Urgent Ping is in the contact menu"))
                 .font(Tokens.Font.caption)
                 .foregroundStyle(Tokens.Palette.secondary)

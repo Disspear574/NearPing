@@ -22,10 +22,9 @@ dependencies {
     implementation(libs.coroutines.core)
 }
 
-// Проверка обнаружения без интерфейса: ./gradlew :linux:probe
 tasks.register<JavaExec>("probe") {
     group = "verification"
-    description = "Поднимает узел и печатает, кого нашёл в сети"
+    description = "Starts a node and prints which peers it found on the network"
     mainClass = "com.disspear574.nearping.linux.ProbeKt"
     classpath = sourceSets["main"].runtimeClasspath
     args = listOf(project.findProperty("seconds")?.toString() ?: "20")
@@ -37,8 +36,7 @@ compose.desktop {
     application {
         mainClass = "com.disspear574.nearping.linux.MainKt"
         nativeDistributions {
-            // .deb и AppImage собираются только на Linux: jpackage делает пакет
-            // той системы, на которой запущен.
+            // .deb and AppImage build only on Linux: jpackage packages for the host system.
             targetFormats(TargetFormat.Deb, TargetFormat.AppImage, TargetFormat.Dmg)
             packageName = "nearping"
             packageVersion = "0.1.0"

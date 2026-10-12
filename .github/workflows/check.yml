@@ -1,0 +1,31 @@
+# Pull request checks on Linux; the macOS app is built locally (macOS minutes cost 10x).
+name: check
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - name: Project conventions
+        run: ./scripts/check-conventions.sh
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v5
+      - name: Core tests and Linux build
+        run: ./gradlew --console=plain :core:jvmTest :linux:compileKotlin

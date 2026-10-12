@@ -59,7 +59,7 @@ class Base64UrlTest {
     fun roundTripsLengthsAroundPadding() {
         for (size in 1..8) {
             val bytes = ByteArray(size) { (it + 1).toByte() }
-            assertEquals(bytes.toList(), Base64Url.decode(Base64Url.encode(bytes)).toList(), "длина $size")
+            assertEquals(bytes.toList(), Base64Url.decode(Base64Url.encode(bytes)).toList(), "length $size")
         }
     }
 

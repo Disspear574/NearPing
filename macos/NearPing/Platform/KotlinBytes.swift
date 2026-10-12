@@ -1,7 +1,6 @@
 import Foundation
 @preconcurrency import core
 
-/// Kotlin/Native объявляет ByteArray, Swift видит KotlinByteArray — мостим в обе стороны.
 extension Data {
     var asKotlinByteArray: KotlinByteArray {
         let out = KotlinByteArray(size: Int32(count))

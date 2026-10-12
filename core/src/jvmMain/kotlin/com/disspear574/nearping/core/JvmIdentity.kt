@@ -5,14 +5,7 @@ import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermission
 import java.security.SecureRandom
 
-/**
- * Личность под Linux: постоянный ключ Ed25519 в файле с правами 0600.
- *
- * Связки ключей, как на macOS, здесь нет. Права файла — тот уровень защиты,
- * который даёт система: приватный ключ отвечает на вопрос «кто может тебя
- * вызвать в локальной сети», и если чужой код уже выполняется от твоего имени,
- * он с тем же успехом нажмёт кнопку в самом приложении.
- */
+/** Linux identity: Ed25519 key in a 0600 file; file permissions are the protection the OS offers. */
 class FileIdentityStore(private val directory: Path) : KeyStore {
     private val keyFile: Path = directory.resolve("identity.key")
     private val nameFile: Path = directory.resolve("display-name")
@@ -65,7 +58,7 @@ class FileIdentityStore(private val directory: Path) : KeyStore {
     }
 }
 
-/** Доверенные пиры в JSON рядом с ключом. */
+/** Trusted peers in a file next to the key. */
 class JvmPeerStorage(private val directory: Path) : PeerStorage {
     private val file: Path = directory.resolve("peers.tsv")
 
@@ -82,8 +75,7 @@ class JvmPeerStorage(private val directory: Path) : PeerStorage {
 
     override fun save(peers: List<Peer>) {
         Files.createDirectories(directory)
-        // Имя может содержать что угодно, кроме перевода строки и табуляции —
-        // иначе одна строка файла перестанет быть одной записью.
+        // A name with a newline or tab would break the one-line-per-record format.
         val lines = peers.map { "${it.keyHex}\t${it.displayName.replace('\t', ' ').replace('\n', ' ')}" }
         Files.write(file, lines)
     }

@@ -4,8 +4,7 @@ import Security
 import OSLog
 @preconcurrency import core
 
-/// Личность устройства на Apple: постоянный ключ подписи Curve25519 в Keychain.
-/// Приватная часть наружу не отдаётся — подписывает `sign(data:)`, и только.
+/// Apple device identity: a permanent Curve25519 signing key in the Keychain, never exposed.
 final class AppleKeyStore: KeyStore, Signer, @unchecked Sendable {
     static let shared = AppleKeyStore()
 
