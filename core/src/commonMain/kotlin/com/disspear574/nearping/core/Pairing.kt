@@ -4,10 +4,7 @@ import com.disspear574.nearping.core.wire.Message
 
 enum class PairingDecision { ASK_USER, ALREADY_PENDING }
 
-/**
- * Взаимное добавление: видеть в сети можно всех, вызывать — только тех,
- * кто принял запрос. Барьер держится на ключе, поэтому переживает смену сети.
- */
+/** Mutual add: everyone is visible, only accepted peers may call. */
 class PairingMachine(private val registry: PeerRegistry) {
     private val pending = LinkedHashMap<String, Peer>()
 
@@ -16,8 +13,7 @@ class PairingMachine(private val registry: PeerRegistry) {
     fun onIncoming(request: Message.PairRequest, from: Peer): PairingDecision {
         // The other side may have forgotten us: local trust must not swallow a new request.
         if (pending.containsKey(from.keyHex)) return PairingDecision.ALREADY_PENDING
-        // Имя берётся из запроса, а не из анонса: человек мог переименоваться,
-        // и в диалоге должно стоять то имя, которое он назвал сам.
+        // Name comes from the request, not the announcement, so the dialog shows what the person chose.
         pending[from.keyHex] = Peer(from.publicKey, request.displayName)
         return PairingDecision.ASK_USER
     }

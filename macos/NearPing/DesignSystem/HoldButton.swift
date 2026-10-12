@@ -1,10 +1,6 @@
 import SwiftUI
 
-/// Кнопка срочного вызова: срабатывает только удержанием.
-///
-/// Не модалка «вы уверены» — её прокликивают не глядя. Удержание делает
-/// случайную отправку физически невозможной. Кольцо показывает, сколько
-/// осталось держать, иначе жест выглядит сломанным.
+/// Urgent-call button that fires only on hold; the ring shows the remaining time.
 struct HoldButton: View {
     let isEnabled: Bool
     let accessibilityText: String
@@ -16,8 +12,7 @@ struct HoldButton: View {
 
     var body: some View {
         ZStack {
-            // Залитый круг, как на Linux: бледный кружок с обводкой не читался
-            // кнопкой и тем более срочной.
+            // Filled circle as on Linux: a pale outlined dot did not read as a button.
             Circle()
                 .fill(Tokens.Palette.urgentFill)
                 .brightness(hovered && isEnabled ? 0.06 : 0)

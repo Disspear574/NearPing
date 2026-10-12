@@ -8,14 +8,7 @@ import java.util.concurrent.atomic.AtomicLong
 import kotlin.math.PI
 import kotlin.math.sin
 
-/**
- * Обычный сигнал синтезируется; срочная сирена берётся из общего WAV-ресурса.
- * Звук не зависит от набора системных мелодий.
- *
- * Играет в текущее устройство вывода — то есть в наушники, из-за которых всё
- * и затевалось. Системные уведомления здесь ни при чём, поэтому «не беспокоить»
- * ему не помеха.
- */
+/** Plays the normal tone (synthesized) and the urgent siren (shared WAV) on the current output device. */
 object Tone {
     private const val RATE = 44100f
 
@@ -77,7 +70,7 @@ object Tone {
         val samples = (RATE * 0.18f).toInt()
         val bytes = ByteArray(samples * 2)
         for (i in 0 until samples) {
-            // Плавный вход и выход, иначе на границе слышен щелчок.
+            // Fade in and out, otherwise the edges click.
             val progress = i.toDouble() / samples
             val envelope = sin(PI * progress)
             val value = (sin(2 * PI * frequency * i / RATE) * envelope * Short.MAX_VALUE * 0.6).toInt()

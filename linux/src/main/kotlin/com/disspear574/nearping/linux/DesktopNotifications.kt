@@ -9,11 +9,7 @@ import java.util.concurrent.TimeUnit
 
 /** Native desktop notifications, independent of the panel helper process. */
 internal object DesktopNotifications {
-    /**
-     * Иконка кладётся из ресурсов в кэш пользователя. Путь `/usr/share/icons/...`
-     * существует только после установки из .deb; в portable-сборке его нет,
-     * и уведомление приходило без иконки.
-     */
+    // The icon is copied from resources into the per-account cache: /usr/share/icons exists only after a .deb install.
     private val iconPath: String? by lazy {
         runCatching {
             val cache = Path.of(System.getenv("XDG_CACHE_HOME") ?: (System.getProperty("user.home") + "/.cache"), "nearping")

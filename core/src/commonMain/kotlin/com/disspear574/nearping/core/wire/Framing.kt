@@ -1,9 +1,6 @@
 package com.disspear574.nearping.core.wire
 
-/**
- * Поток TCP не знает границ сообщений, поэтому каждое предваряется длиной:
- * четыре байта big-endian, затем ровно столько байт тела.
- */
+/** Length-prefixed framing: 4 bytes big-endian, then the body. */
 object Framing {
     const val MAX_FRAME: Int = 64 * 1024
 
@@ -19,10 +16,7 @@ object Framing {
         return header + payload
     }
 
-    /**
-     * Собирает кадры из произвольно нарезанных кусков. Один вызов [feed] может
-     * вернуть ноль, один или несколько сообщений — как лягут границы пакетов.
-     */
+    /** Reassembles frames from arbitrarily split chunks. */
     class Parser {
         private var buffer = ByteArray(0)
 
@@ -34,8 +28,7 @@ object Framing {
                     ((buffer[1].toInt() and 0xFF) shl 16) or
                     ((buffer[2].toInt() and 0xFF) shl 8) or
                     (buffer[3].toInt() and 0xFF)
-                // Длина приходит из сети: без проверки чужой пакет заставит нас
-                // копить гигабайты в ожидании кадра, которого не будет.
+                // The length comes from the network; unchecked it would let a peer make us buffer gigabytes.
                 require(declared in 0..MAX_FRAME) { "bad frame length: $declared" }
                 if (buffer.size < HEADER + declared) break
                 out += buffer.copyOfRange(HEADER, HEADER + declared)
