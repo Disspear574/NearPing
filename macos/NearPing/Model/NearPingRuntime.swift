@@ -173,6 +173,10 @@ final class NearPingRuntime {
                 row.status = status.0
                 row.statusKind = status.1
             }
+            if view.isForeignVersion {
+                row.status = String(localized: "other NearPing version")
+                row.statusKind = .failed
+            }
             return row
         }
         pendingRequests = engine.pendingPairingRequests().map { peer in
@@ -255,6 +259,10 @@ final class NearPingRuntime {
 
         func networkFoundPeer(_ peer: Peer, endpointKey: String) {
             owner.engine?.onPeerFound(peer: peer, endpoint: endpointKey)
+        }
+
+        func networkFoundForeignPeer(_ peer: Peer, protocolVersion: Int32) {
+            owner.engine?.onForeignPeerFound(peer: peer, protocolVersion: protocolVersion)
         }
 
         func networkLostPeer(keyHex: String) {

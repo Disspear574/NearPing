@@ -7,6 +7,7 @@ import OSLog
 @MainActor
 protocol NetworkDelegate: AnyObject {
     func networkFoundPeer(_ peer: Peer, endpointKey: String)
+    func networkFoundForeignPeer(_ peer: Peer, protocolVersion: Int32)
     func networkLostPeer(keyHex: String)
     func networkConnected(connectionId: String)
     func networkReceived(connectionId: String, data: Data)
@@ -162,7 +163,16 @@ final class NearPingNetwork: Transport, @unchecked Sendable {
                 for key in ["v", "pk", "n"] {
                     if let value = txt[key] { dictionary[key] = value }
                 }
-                guard let peer = TxtRecord.shared.parse(txt: dictionary) else { continue }
+                guard let peer = TxtRecord.shared.parse(txt: dictionary) else {
+                    if let foreign = TxtRecord.shared.parseAnyVersion(txt: dictionary),
+                       let version = TxtRecord.shared.version(txt: dictionary) {
+                        let found = foreign
+                        DispatchQueue.main.async { [weak self] in
+                            self?.delegate?.networkFoundForeignPeer(found, protocolVersion: version.int32Value)
+                        }
+                    }
+                    continue
+                }
                 endpoints[peer.keyHex] = result.endpoint
                 let found = peer
                 DispatchQueue.main.async { [weak self] in
@@ -174,7 +184,7 @@ final class NearPingNetwork: Transport, @unchecked Sendable {
                 for key in ["v", "pk", "n"] {
                     if let value = txt[key] { dictionary[key] = value }
                 }
-                guard let peer = TxtRecord.shared.parse(txt: dictionary) else { continue }
+                guard let peer = TxtRecord.shared.parseAnyVersion(txt: dictionary) else { continue }
                 let lost = peer.keyHex
                 DispatchQueue.main.async { [weak self] in
                     self?.delegate?.networkLostPeer(keyHex: lost)
