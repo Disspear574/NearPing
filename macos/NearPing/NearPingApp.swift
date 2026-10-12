@@ -18,6 +18,7 @@ struct NearPingApp: App {
             NSApplication.shared.applicationIconImage = icon
         }
         NearPingRuntime.shared.start()
+        LoginItem.enableOnFirstLaunch()
     }
 
     // MenuBarExtra использует размер NSImage, а не SwiftUI frame у label.
@@ -52,6 +53,7 @@ private struct PopoverView: View {
     @State private var showingPause = false
     @State private var pauseMinutes = "30"
     @State private var contactToRemove: PeerRow?
+    @State private var launchAtLogin = LoginItem.isEnabled
     @AppStorage("nearping.appearance") private var appearance = "system"
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -284,6 +286,12 @@ private struct PopoverView: View {
                     Text(String(localized: "Light")).tag("light")
                     Text(String(localized: "Dark")).tag("dark")
                 }.labelsHidden().pickerStyle(.segmented)
+                Toggle(String(localized: "Open at login"), isOn: $launchAtLogin)
+                    .padding(.top, 18)
+                    .onChange(of: launchAtLogin) { _, enabled in
+                        LoginItem.set(enabled)
+                        launchAtLogin = LoginItem.isEnabled
+                    }
                 Text(verbatim: runtime.myFingerprint).font(.system(size: 11, design: .monospaced))
                     .foregroundStyle(Tokens.Palette.secondary).textSelection(.enabled).padding(.top, 18)
                 HStack {

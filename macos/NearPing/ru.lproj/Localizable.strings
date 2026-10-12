@@ -45,6 +45,8 @@
 "not delivered: too often" = "Не дошло: слишком часто";
 "not delivered" = "Не доставлено";
 "offline" = "Не в сети";
+"Open at login" = "Запускать при входе";
+"other NearPing version" = "Другая версия NearPing, нужно обновить";
 "online" = "В сети";
 "paused until %@" = "Пауза до %@";
 "request sent" = "Запрос отправлен";

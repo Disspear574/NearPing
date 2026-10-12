@@ -32,6 +32,8 @@ fun PeerListScreen(
     state: NodeState,
     strings: Strings,
     themeMode: ThemeMode,
+    launchAtLogin: Boolean?,
+    onLaunchAtLogin: (Boolean) -> Unit,
     onTheme: (ThemeMode) -> Unit,
     onRename: (String) -> Unit,
     onCall: (String, Boolean) -> Unit,
@@ -113,6 +115,13 @@ fun PeerListScreen(
                                     shape = SegmentedButtonDefaults.itemShape(index, 3),
                                     label = { Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                                 )
+                            }
+                        }
+                        if (launchAtLogin != null) {
+                            Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Text(strings.openAtLogin, Modifier.weight(1f), style = MaterialTheme.typography.labelLarge,
+                                    maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                Switch(checked = launchAtLogin, onCheckedChange = onLaunchAtLogin)
                             }
                         }
                         Text(strings.discoveryNetwork, style = MaterialTheme.typography.labelLarge)
@@ -358,13 +367,14 @@ private fun ContactRow(
         Column(Modifier.weight(1f)) {
             Text(peer.displayName, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(
-                status?.let { strings.status(it.event) } ?: when {
+                if (peer.isForeignVersion) strings.otherVersion
+                else status?.let { strings.status(it.event) } ?: when {
                     peer.isPaused -> strings.pausedUntil
                     peer.isOnline -> strings.online
                     else -> strings.offline
                 },
                 style = MaterialTheme.typography.bodySmall,
-                color = when (status?.kind) {
+                color = if (peer.isForeignVersion) colors.urgent else when (status?.kind) {
                     CallStatus.Kind.GOOD -> colors.online
                     CallStatus.Kind.BAD -> colors.urgent
                     CallStatus.Kind.WARN -> colors.paused

@@ -30,8 +30,11 @@ class PeerView(
     val isTrusted: Boolean,
     val isOnline: Boolean,
     val pausedUntilEpochSeconds: Long?,
+    /** Set when the peer advertises another protocol version: visible, but not callable. */
+    val foreignProtocolVersion: Int?,
 ) {
     val isPaused: Boolean get() = pausedUntilEpochSeconds != null
+    val isForeignVersion: Boolean get() = foreignProtocolVersion != null
 }
 
 interface EngineListener {
@@ -66,6 +69,7 @@ class Engine(
     private val dialled = LinkedHashSet<String>()
     private val pausedPeers = LinkedHashMap<String, Long>()
     private val outgoingCalls = LinkedHashMap<String, String>()
+    private val foreignVersions = LinkedHashMap<String, Int>()
     // Кому мы сами отправили запрос. Согласие принимается только от них: иначе
     // любой в сети прислал бы `pair_accept` без запроса и попал бы в доверенные.
     // Список живёт в памяти и перезапуск не переживает — это осознанно: после
@@ -113,12 +117,22 @@ class Engine(
         if (peer.publicKey.contentEquals(identity.publicKey)) return
         seen[peer.keyHex] = peer
         endpoints[peer.keyHex] = endpoint
+        foreignVersions.remove(peer.keyHex)
         // Звонит только тот, чей ключ меньше. Иначе обе стороны находят друг друга
         // одновременно, обе набирают, и получается два соединения на одну пару.
         val shouldDial = compareKeys(identity.publicKey, peer.publicKey) < 0
         if (shouldDial && !connectionByPeer.containsKey(peer.keyHex) && dialled.add(peer.keyHex)) {
             transport.connect(outgoingConnectionId(peer.keyHex), endpoint)
         }
+        listener.onPeersChanged()
+    }
+
+    /** A peer on another protocol version is listed so the user sees why it cannot be called. */
+    fun onForeignPeerFound(peer: Peer, protocolVersion: Int) {
+        if (peer.publicKey.contentEquals(identity.publicKey)) return
+        seen[peer.keyHex] = peer
+        endpoints.remove(peer.keyHex)
+        foreignVersions[peer.keyHex] = protocolVersion
         listener.onPeersChanged()
     }
 
@@ -152,6 +166,7 @@ class Engine(
         seen.remove(keyHex)
         endpoints.remove(keyHex)
         dialled.remove(keyHex)
+        foreignVersions.remove(keyHex)
         listener.onPeersChanged()
     }
 
@@ -221,6 +236,7 @@ class Engine(
                 isTrusted = peer != null && registry.isTrusted(peer.publicKey),
                 isOnline = connectionByPeer[keyHex]?.let { sessions[it]?.isEstablished } == true,
                 pausedUntilEpochSeconds = pausedPeers[keyHex]?.takeIf { it > clock.nowEpochSeconds() },
+                foreignProtocolVersion = foreignVersions[keyHex],
             )
         }
     }
@@ -339,6 +355,8 @@ class Engine(
                 is Message.Ping -> onPing(peer, message)
 
                 is Message.Ack -> {
+                    // Any answer means the call reached the machine; only unanswered calls fail on disconnect.
+                    outgoingCalls.remove(message.id)
                     val state = when (message.state) {
                         AckState.DELIVERED -> CallState.DELIVERED
                         AckState.SEEN -> CallState.SEEN

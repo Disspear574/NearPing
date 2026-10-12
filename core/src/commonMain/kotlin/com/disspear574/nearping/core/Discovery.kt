@@ -15,12 +15,17 @@ object TxtRecord {
     )
 
     /** null — запись чужой версии или испорченная. Такие игнорируются целиком. */
-    fun parse(txt: Map<String, String>): Peer? {
-        if (txt["v"] != Core.protocolVersion.toString()) return null
-        val key = txt["pk"]?.let { Base64Url.decode(it) } ?: return null
+    fun parse(txt: Map<String, String>): Peer? =
+        if (version(txt) == Core.protocolVersion) parseAnyVersion(txt) else null
+
+    /** Peer of any protocol version: a colleague on another build is shown, not hidden. */
+    fun parseAnyVersion(txt: Map<String, String>): Peer? {
+        val key = txt["pk"]?.let { runCatching { Base64Url.decode(it) }.getOrNull() } ?: return null
         if (key.size != IDENTITY_KEY_BYTES) return null
         return Peer(key, txt["n"] ?: "")
     }
+
+    fun version(txt: Map<String, String>): Int? = txt["v"]?.toIntOrNull()
 
     private const val IDENTITY_KEY_BYTES = 32
 }

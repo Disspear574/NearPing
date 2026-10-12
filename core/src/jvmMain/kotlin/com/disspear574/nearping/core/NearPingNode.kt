@@ -256,6 +256,13 @@ class NearPingNode(directory: Path) {
             engine.onPeerFound(peer, "${address.hostAddress}:$port")
         }
 
+        override fun onForeignPeerFound(peer: Peer, protocolVersion: Int) = onWorker {
+            if (epoch != discoveryEpoch) return@onWorker
+            discovered.add(peer.keyHex)
+            transport.forgetEndpoint(peer.keyHex)
+            engine.onForeignPeerFound(peer, protocolVersion)
+        }
+
         override fun onPeerLost(keyHex: String) = onWorker {
             if (epoch != discoveryEpoch) return@onWorker
             discovered.remove(keyHex)
