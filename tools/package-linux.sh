@@ -5,7 +5,8 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-label="${1:?give a build label, for example test15}"
+label="${1:?give a build label, for example test15, or release}"
+version="$(sed -n 's/.*packageVersion = "\(.*\)".*/\1/p' linux/build.gradle.kts)"
 arch="x64"
 jdk_version="21.0.12.1"
 jdk_url="https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.12.1%2B1/OpenJDK21U-jdk_x64_linux_hotspot_21.0.12.1_1.tar.gz"
@@ -14,7 +15,14 @@ jdk_sha="ce79869e1307ed8ee1e2baa86a412b1eb5b75d10a01006d788a6f968bcfaee94"
 modules="java.base,java.desktop,java.instrument,java.prefs,jdk.unsupported,jdk.crypto.ec,jdk.localedata"
 cache="${XDG_CACHE_HOME:-$HOME/.cache}/nearping-build"
 out="releases/$label"
-name="NearPing-$label-linux-x86_64"
+if [ "$label" = release ]; then
+  name="NearPing-$version-linux-x86_64"
+  deb_version="$version"
+else
+  name="NearPing-$label-linux-x86_64"
+  # The "~" sorts a test build below the release of the same version.
+  deb_version="$version~$label"
+fi
 stage="$out/$name"
 
 ./gradlew :linux:portableLibs -PlinuxTarget="$arch" -q
@@ -65,9 +73,8 @@ Without them the app runs as a window only: no panel icon, no system notificatio
 Data: ~/.local/share/nearping (identity key, contacts, selected network).
 TXT
 
-# The "~" sorts a test build below the future 0.1.0.
-deb="nearping_0.1.0~${label}_amd64.deb"
-python3 tools/build-deb.py "$stage" "$out/$deb" "0.1.0~$label"
+deb="nearping_${deb_version}_amd64.deb"
+python3 tools/build-deb.py "$stage" "$out/$deb" "$deb_version"
 
 ( cd "$out" && COPYFILE_DISABLE=1 tar -cJf "$name.tar.xz" "$name" && shasum -a 256 "$name.tar.xz" "$deb" > SHA256SUMS.txt )
 rm -rf "$stage"
