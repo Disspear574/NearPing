@@ -1,9 +1,6 @@
 package com.disspear574.nearping.core
 
-/**
- * Подделка криптографии: настоящая математика здесь не нужна, нужны те же
- * алгебраические свойства — симметричность общего секрета и проверяемость подписи.
- */
+/** Fake crypto with the same algebraic properties as the real one: symmetric shared secret, verifiable signature. */
 internal class FakeCrypto(private val marker: Byte) : Crypto {
     var counter: Byte = 0
 
@@ -17,7 +14,6 @@ internal class FakeCrypto(private val marker: Byte) : Crypto {
         return EphemeralKeyPair(privateKey = scalar, publicKey = scalar)
     }
 
-    // shared(a, b) == shared(b, a): порядок задаётся сравнением, как в настоящем X25519
     override fun sharedSecret(privateKey: ByteArray, peerPublicKey: ByteArray): ByteArray =
         if (lexicographic(privateKey, peerPublicKey) <= 0) {
             privateKey + peerPublicKey

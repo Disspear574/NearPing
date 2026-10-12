@@ -64,12 +64,11 @@ fun main(args: Array<String>) = application {
     LaunchedEffect(Unit) {
         node.calls.collect { call ->
             Tone.play(call.urgent)
-            // Плашка одна: вытесненный вызов считается увиденным, иначе у его
-            // отправителя навсегда останется «доставлено».
+            // There is one banner: a displaced call counts as seen, or its sender would stay on "delivered" forever.
             incoming?.let { previous -> node.markSeen(previous.keyHex, previous.callId) }
             incoming = call
             val notificationText = if (call.urgent) strings.urgent else strings.wantsAttention
-            // Предупреждение снимается, как только уведомления снова работают.
+            // The warning clears once notifications work again.
             notificationFailure = !DesktopNotifications.show(call.displayName, notificationText, call.urgent)
         }
     }
@@ -207,10 +206,6 @@ fun main(args: Array<String>) = application {
     }
 }
 
-/**
- * Входящий Ping: отдельная плашка поверх остальных окон.
- * Сирена и красные края включаются только для срочного Ping.
- */
 @Composable
 private fun IncomingWindow(call: IncomingCall, strings: Strings, themeMode: ThemeMode, onSeen: () -> Unit) {
     var remaining by remember(call.callId) { mutableStateOf(1f) }

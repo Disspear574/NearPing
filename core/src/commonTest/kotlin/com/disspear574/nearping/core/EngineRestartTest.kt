@@ -19,10 +19,7 @@ private class Quiet : EngineListener {
     override fun onCallState(keyHex: String, callId: String, state: CallState) {}
 }
 
-/**
- * Две машины, где сторону А можно «перезапустить»: новый движок на том же ключе
- * и том же хранилище доверия, как это бывает после закрытия приложения.
- */
+/** Two machines where side A can be "restarted": a new engine on the same key and trust store. */
 private class Restartable {
     val clock = FixedClock()
     val aKey = ByteArray(32) { 0x11 }
@@ -58,7 +55,6 @@ private class Restartable {
         pump()
     }
 
-    /** Приложение А закрылось и открылось: новый движок, та же личность, то же доверие. */
     fun restartA() {
         b.onDisconnected(bConn)
         a = newA("Аня")
@@ -66,7 +62,6 @@ private class Restartable {
         connect()
     }
 
-    /** Обе стороны потеряли соединение (например, после rename) и переподнялись. */
     fun reconnect() {
         b.onDisconnected(bConn)
         queue.clear()
@@ -92,9 +87,7 @@ class EnginePairingAfterRestartTest {
         net.a.requestPairing(net.bHex); net.pump()
         assertEquals(listOf("Аня"), net.bEvents.pairingRequests)
 
-        // Борис думал десять минут, Аня за это время перезапустила приложение.
-        // Согласие без живого запроса не принимается: иначе любой в сети
-        // прислал бы pair_accept и оказался в доверенных.
+        // Accept without a live request is ignored, otherwise anyone on the network could send pair_accept.
         net.restartA()
         net.b.acceptPairing(net.aHex); net.pump()
 
@@ -110,8 +103,7 @@ class EnginePairingAfterRestartTest {
         net.restartA()
         net.b.acceptPairing(net.aHex); net.pump()
 
-        // Аня жмёт «Добавить» ещё раз. Бориса спрашивают повторно — у него
-        // есть право отказать, — он соглашается, и пара восстановлена.
+        // Re-adding asks Boris again, and he may refuse.
         net.a.requestPairing(net.bHex); net.pump()
         assertEquals(2, net.bEvents.pairingRequests.size)
         net.b.acceptPairing(net.aHex); net.pump()
@@ -126,7 +118,6 @@ class EnginePairingAfterRestartTest {
         net.connect()
         net.a.requestPairing(net.bHex); net.pump()
         net.b.acceptPairing(net.aHex); net.pump()
-        // Аня переустановила приложение и потеряла список контактов, ключ тот же.
         net.aStorage.save(emptyList())
         net.restartA()
         net.a.requestPairing(net.bHex); net.pump()
@@ -148,7 +139,7 @@ class EngineRenameTest {
 
         val seenByB = net.b.peers().single { it.keyHex == net.aHex }
         assertEquals("Анна Петрова", seenByB.displayName)
-        assertTrue(seenByB.isTrusted, "переименование не должно трогать доверие")
+        assertTrue(seenByB.isTrusted, "rename must not touch trust")
     }
 
     @Test
@@ -158,7 +149,7 @@ class EngineRenameTest {
         net.b.requestPairing(net.aHex); net.pump()
         assertEquals(1, net.a.pendingPairingRequests().size)
         net.a.rename("Анна")
-        assertEquals(1, net.a.pendingPairingRequests().size, "запрос не должен пропасть при смене имени")
+        assertEquals(1, net.a.pendingPairingRequests().size, "request must survive a rename")
     }
 
     @Test

@@ -1,15 +1,12 @@
 package com.disspear574.nearping.core
 
-/** Сохраняется платформой. Ключ — единственное, по чему узнают пира. */
+/** Platform-persisted peer storage. */
 interface PeerStorage {
     fun load(): List<Peer>
     fun save(peers: List<Peer>)
 }
 
-/**
- * Доверенные пиры. Индексируются публичным ключом, а не именем и не адресом:
- * имя человек меняет сам, адрес меняет роутер, ключ не меняется никогда.
- */
+/** Trusted peers indexed by public key, not by name or address. */
 class PeerRegistry(private val storage: PeerStorage) {
     private val byKey = LinkedHashMap<String, Peer>()
 

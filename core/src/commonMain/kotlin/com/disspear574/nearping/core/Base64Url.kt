@@ -1,6 +1,6 @@
 package com.disspear574.nearping.core
 
-/** base64url без выравнивания. Свой, чтобы не тащить зависимость ради двадцати строк. */
+/** Unpadded base64url. */
 object Base64Url {
     private const val ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
 

@@ -17,7 +17,7 @@ private class Recorder : SessionEvents {
     override fun onFailed(reason: String) { failures += reason }
 }
 
-/** Две стороны, связанные очередями: порядок доставки детерминирован. */
+/** Two sides linked by queues, so delivery order is deterministic. */
 private class Pair2(trustEachOther: Boolean) {
     val aKey = ByteArray(32) { 0x11 }
     val bKey = ByteArray(32) { 0x22 }
@@ -107,7 +107,7 @@ class SessionAttackTest {
         val pair = Pair2(trustEachOther = true)
         pair.a.start()
         pair.b.start()
-        // Ответ с чужой подписью: правильный вызов, но подписано не тем ключом.
+        // Response signed by the wrong key.
         while (pair.aOut.isNotEmpty()) pair.b.onBytes(pair.aOut.removeFirst())
         val challenge = pair.bOut.map { frameToMessage(it) }.filterIsInstance<Message.AuthChallenge>()
         pair.bOut.clear()
@@ -118,21 +118,21 @@ class SessionAttackTest {
         )
         pair.b.onBytes(Framing.frame(Wire.encode(Message.Hello(Base64Url.encode(pair.aKey), "А"))))
         pair.b.onBytes(Framing.frame(Wire.encode(forged)))
-        assertTrue(pair.bEvents.failures.isNotEmpty(), "подделка должна быть отвергнута")
+        assertTrue(pair.bEvents.failures.isNotEmpty(), "forgery must be rejected")
     }
 
     @Test
     fun replayedAuthResponseIsRejected() {
         val pair = Pair2(trustEachOther = true)
         pair.handshake()
-        // Повторяем перехваченный ответ: вызов уже потрачен.
+        // Replay of an intercepted response: the challenge is already spent.
         val replay = Message.AuthResponse(
             challenge = Base64Url.encode(ByteArray(32)),
             ephemeralKey = Base64Url.encode(ByteArray(32) { 0x33 }),
             signature = Base64Url.encode(ByteArray(33)),
         )
         pair.a.onBytes(Framing.frame(Wire.encode(replay)))
-        assertTrue(pair.aEvents.failures.isNotEmpty(), "повтор должен быть отвергнут")
+        assertTrue(pair.aEvents.failures.isNotEmpty(), "replay must be rejected")
     }
 
     @Test

@@ -1,7 +1,6 @@
 import SwiftUI
 
-/// Верхняя плашка входящего Ping. Для срочного варианта используется красный
-/// прогресс; обычный остаётся в спокойной лесной палитре.
+/// Top banner for an incoming ping; urgent uses red progress, normal the calm forest palette.
 struct UrgentBannerView: View {
     let callerName: String
     let isUrgent: Bool
@@ -23,7 +22,7 @@ struct UrgentBannerView: View {
                     .frame(width: 46, height: 46)
 
                 VStack(alignment: .leading, spacing: 3) {
-                    // Имя задаёт человек: длину не ограничиваем, но и раскладку ломать не даём.
+                    // The name is set by the person: length is unbounded but must not break the layout.
                     Text(String(localized: "\(callerName) is calling"))
                         .font(.system(size: 19, weight: .semibold))
                         .foregroundStyle(Tokens.Palette.primary)
@@ -68,7 +67,7 @@ struct UrgentBannerView: View {
         }
     }
 
-    /// Текст «срочно» — светлым красным, полоса и кольцо — насыщенным.
+    // The urgent label uses light red, the bar and ring a saturated one.
     private var bannerColor: Color {
         isUrgent ? Tokens.Palette.urgent : Tokens.Palette.accent
     }

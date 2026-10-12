@@ -7,22 +7,17 @@ interface Clock {
     fun nowEpochSeconds(): Long
 }
 
-/**
- * Реализуется платформой: NWConnection на Apple, сокеты на JVM.
- *
- * Адресуется идентификатором соединения, а не ключом пира: у входящего
- * соединения ключ неизвестен до `hello`, а к одному пиру их может быть два.
- */
+/** Implemented by the platform; addressed by connection id because an inbound peer key is unknown until `hello`. */
 interface Transport {
     fun connect(connectionId: String, endpoint: String)
     fun send(connectionId: String, bytes: ByteArray)
     fun disconnect(connectionId: String)
 }
 
-/** Состояние вызова у отправителя. */
+/** Sender-side call state. */
 enum class CallState { SENT, DELIVERED, SEEN, FAILED, RATE_LIMITED }
 
-/** Снимок пира для интерфейса: плоский, чтобы дёшево пересекать мост в Swift. */
+/** Flat peer snapshot for the UI, cheap to pass across the Swift bridge. */
 class PeerView(
     val keyHex: String,
     val displayName: String,
@@ -30,7 +25,6 @@ class PeerView(
     val isTrusted: Boolean,
     val isOnline: Boolean,
     val pausedUntilEpochSeconds: Long?,
-    /** Set when the peer advertises another protocol version: visible, but not callable. */
     val foreignProtocolVersion: Int?,
 ) {
     val isPaused: Boolean get() = pausedUntilEpochSeconds != null
@@ -45,12 +39,7 @@ interface EngineListener {
     fun onCallState(keyHex: String, callId: String, state: CallState)
 }
 
-/**
- * Связывает обнаружение, соединения, доверие и паузу.
- *
- * Всё, что знает о сети и криптографии, приходит снаружи интерфейсами: ядро
- * остаётся общим и годится для JVM-клиента под Linux без единой правки.
- */
+/** Ties together discovery, connections, trust and pause. */
 class Engine(
     private val identity: Identity,
     private val signer: Signer,
@@ -70,14 +59,9 @@ class Engine(
     private val pausedPeers = LinkedHashMap<String, Long>()
     private val outgoingCalls = LinkedHashMap<String, String>()
     private val foreignVersions = LinkedHashMap<String, Int>()
-    // Кому мы сами отправили запрос. Согласие принимается только от них: иначе
-    // любой в сети прислал бы `pair_accept` без запроса и попал бы в доверенные.
-    // Список живёт в памяти и перезапуск не переживает — это осознанно: после
-    // перезапуска человек жмёт «Добавить» ещё раз, и той стороне задаётся вопрос
-    // повторно — у неё должно быть право отказать (EngineRepairPairingTest).
+    // Pair accept is honoured only from peers we asked; kept in memory so a restart asks the other side again.
     private val outgoingPairings = LinkedHashSet<String>()
 
-    // Only peers advertising heartbeat support get a silence deadline.
     private val lastHeard = LinkedHashMap<String, Long>()
     private val handshakeStarted = LinkedHashMap<String, Long>()
     private var lastHeartbeatSent = clock.nowEpochSeconds()
@@ -90,11 +74,6 @@ class Engine(
     val isPaused: Boolean get() = activePauseUntil() != null
     val pausedUntilEpochSeconds: Long? get() = activePauseUntil()
 
-    /**
-     * Новое имя уходит в `hello`, а `hello` шлётся только при установке соединения,
-     * поэтому живые сессии рвутся и переподнимаются. Доверие, запросы на спаривание,
-     * лимиты и пауза остаются на месте — пересоздавать движок не нужно.
-     */
     fun rename(displayName: String) {
         identity.displayName = displayName
         sessions.keys.toList().forEach { connectionId ->
@@ -111,15 +90,13 @@ class Engine(
         listener.onPeersChanged()
     }
 
-    // MARK: обнаружение
 
     fun onPeerFound(peer: Peer, endpoint: String) {
         if (peer.publicKey.contentEquals(identity.publicKey)) return
         seen[peer.keyHex] = peer
         endpoints[peer.keyHex] = endpoint
         foreignVersions.remove(peer.keyHex)
-        // Звонит только тот, чей ключ меньше. Иначе обе стороны находят друг друга
-        // одновременно, обе набирают, и получается два соединения на одну пару.
+        // Only the side with the smaller key dials, so a simultaneous find does not open two connections.
         val shouldDial = compareKeys(identity.publicKey, peer.publicKey) < 0
         if (shouldDial && !connectionByPeer.containsKey(peer.keyHex) && dialled.add(peer.keyHex)) {
             transport.connect(outgoingConnectionId(peer.keyHex), endpoint)
@@ -127,7 +104,6 @@ class Engine(
         listener.onPeersChanged()
     }
 
-    /** A peer on another protocol version is listed so the user sees why it cannot be called. */
     fun onForeignPeerFound(peer: Peer, protocolVersion: Int) {
         if (peer.publicKey.contentEquals(identity.publicKey)) return
         seen[peer.keyHex] = peer
@@ -136,14 +112,12 @@ class Engine(
         listener.onPeersChanged()
     }
 
-    /** Called by platform timers; never starts a second dial while one is pending. */
     fun retryConnections() {
         seen.values.toList().forEach { peer ->
             endpoints[peer.keyHex]?.let { onPeerFound(peer, it) }
         }
     }
 
-    /** Called once a second by both platforms. Presence never triggers a user alert. */
     fun tick() {
         val now = clock.nowEpochSeconds()
         // A clock correction must not leave deadlines far in the future.
@@ -180,7 +154,6 @@ class Engine(
         return a.size - b.size
     }
 
-    // MARK: транспорт
 
     fun onConnected(connectionId: String) {
         val session = Session(
@@ -211,7 +184,7 @@ class Engine(
             if (connectionByPeer[keyHex] == connectionId) connectionByPeer.remove(keyHex)
             dialled.remove(keyHex)
             pausedPeers.remove(keyHex)
-            // Вызовы, не получившие подтверждения, повисли бы навсегда.
+            // Unacknowledged calls would otherwise hang forever.
             val orphaned = outgoingCalls.filterValues { it == connectionId }.keys.toList()
             orphaned.forEach { callId ->
                 outgoingCalls.remove(callId)
@@ -221,7 +194,6 @@ class Engine(
         listener.onPeersChanged()
     }
 
-    // MARK: действия пользователя
 
     fun peers(): List<PeerView> {
         val keys = LinkedHashSet<String>()
@@ -270,7 +242,6 @@ class Engine(
         listener.onPeersChanged()
     }
 
-    /** Возвращает id вызова, либо null — если отправить некому. */
     private val pingLimiter = PingLimiter()
     private val incomingLimiter = PingLimiter()
 
@@ -290,7 +261,6 @@ class Engine(
         return callId
     }
 
-    /** Человек увидел вызов: закрыл баннер или уведомление. */
     fun markSeen(keyHex: String, callId: String) {
         sessionFor(keyHex)?.sendMessage(Message.Ack(callId, AckState.SEEN))
     }
@@ -310,14 +280,14 @@ class Engine(
 
         override fun onEstablished(peer: Peer) {
             handshakeStarted.remove(connectionId)
-            // Оба конца могли набрать одновременно: второе соединение лишнее.
+            // Both ends may have dialled at once; the second connection is redundant.
             val existing = connectionByPeer[peer.keyHex]
             if (existing != null && existing != connectionId && sessions[existing]?.isEstablished == true) {
                 transport.disconnect(connectionId)
                 sessions.remove(connectionId)
                 return
             }
-            // Имя обновляем только после проверки ключа, а не из открытого Bonjour TXT.
+            // Update the name only after the key is verified, never from open Bonjour TXT.
             if (registry.isTrusted(peer.publicKey)) registry.trust(peer)
             seen[peer.keyHex] = peer
             peerByConnection[connectionId] = peer.keyHex
@@ -332,16 +302,13 @@ class Engine(
             }
             when (message) {
                 is Message.PairRequest ->
-                    // Спрашиваем даже того, кому уже доверяем: та сторона могла нас
-                    // удалить и просит пару заново — у человека должно быть право
-                    // отказать (тесты EngineRepairPairingTest).
+                    // Ask even a trusted peer: it may have removed us and re-requests, so it must be allowed to refuse.
                     if (pairing.onIncoming(message, peer) == PairingDecision.ASK_USER) {
                         listener.onPairingRequest(peer)
                     }
 
                 is Message.PairAccept -> {
-                    // Только в ответ на наш запрос; запоздалое согласие после того,
-                    // как мы сами удалили человека, тоже отбрасывается.
+                    // Only answers to our own request count; a late accept after we removed the peer is dropped.
                     if (outgoingPairings.remove(peer.keyHex)) {
                         registry.trust(peer)
                         listener.onPeersChanged()
@@ -381,16 +348,12 @@ class Engine(
         }
 
         private fun onPing(peer: Peer, ping: Message.Ping) {
-            // Пауза глушит оба типа вызова, включая срочный. Иначе паузе нет доверия.
-            // Подтверждение при этом уходит: отправитель должен различать «не дошло»
-            // и «дошло, но человек закрылся паузой» — паузу он и так видит в списке.
+            // Pause mutes urgent calls too; the ack still goes out so the sender can tell "not delivered" from "paused".
             if (isPaused) {
                 sessions[connectionId]?.sendMessage(Message.Ack(ping.id, AckState.DELIVERED))
                 return
             }
-            // Отброшенный по лимиту вызов не «доставлен»: человек его не услышал.
-            // У отправителя такой же лимит, но задержка в сети может свести два
-            // вызова вплотную, и тогда он должен узнать правду.
+            // A rate-limited call is not "delivered"; the sender must learn the truth despite network races.
             val now = clock.nowEpochSeconds()
             if (incomingLimiter.remaining(peer.keyHex, ping.urgent, now) > 0) {
                 sessions[connectionId]?.sendMessage(Message.Ack(ping.id, AckState.RATE_LIMITED))

@@ -1,0 +1,37 @@
+# Secrets, machine paths and personal data on every pull request and push to main.
+name: privacy
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: privacy-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  privacy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # Full history: commit messages and emails are checked, not only the files.
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Tracked files
+        run: python3 scripts/publish-check.py --tree
+      - name: Commits of the change
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        # A first or forced push has no usable base: the whole history of the new tip is checked.
+        run: |
+          if git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+            python3 scripts/publish-check.py --range "$BASE..$HEAD"
+          else
+            python3 scripts/publish-check.py --range "$HEAD"
+          fi
