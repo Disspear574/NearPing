@@ -16,10 +16,7 @@ interface DiscoveryEvents {
     fun onPeerLost(keyHex: String)
 }
 
-/**
- * mDNS под JVM через JmDNS — тот же протокол, что Bonjour на macOS и Avahi на Linux,
- * поэтому клиенты разных платформ видят друг друга без посредников.
- */
+/** mDNS via JmDNS, wire-compatible with Bonjour on macOS and Avahi on Linux. */
 class JmdnsDiscovery(private val events: DiscoveryEvents) {
     private fun debug(text: String) {
         if (System.getProperty("nearping.debug") != null) println("[nearping/mdns] $text")
@@ -37,8 +34,7 @@ class JmdnsDiscovery(private val events: DiscoveryEvents) {
 
         val info = ServiceInfo.create(
             "${TxtRecord.SERVICE_TYPE}.local.",
-            // Имя службы должно быть уникальным в сети, но личностью не является:
-            // узнают по ключу из TXT, а не по этой строке.
+            // The service name only needs to be unique; peers are identified by the key in TXT.
             "nearping-${identity.fingerprint}",
             port,
             0,
@@ -72,8 +68,7 @@ class JmdnsDiscovery(private val events: DiscoveryEvents) {
                     return events.onForeignPeerFound(foreign, version)
                 }
                 if (peer.publicKey.contentEquals(identity.publicKey)) return debug("that is me")
-                // Первый отклик часто несёт только link-local IPv6 без области
-                // видимости — соединиться по такому нельзя. Ждём отклика с IPv4.
+                // The first reply often has only a scope-less link-local IPv6 address, which is unusable; wait for IPv4.
                 val address = resolved.inet4Addresses.firstOrNull()
                     ?: return debug("no IPv4 yet, waiting for the next answer")
                 debug("found ${peer.displayName} at ${address.hostAddress}:${resolved.port}")

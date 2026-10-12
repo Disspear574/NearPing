@@ -1,14 +1,9 @@
 #!/usr/bin/env python3
-"""Перепаковывает jar-файлы без сжатия (ZIP_STORED), на месте.
+"""Repacks jars uncompressed (ZIP_STORED) in place so the final xz sees duplicate class bytes across files.
 
-    tools/store-jars.py <каталог с jar>
+    tools/store-jars.py <jar directory>
 
-Зачем: пакет целиком жмётся xz, а уже сжатые zip он почти не берёт — 40 МБ jar
-превращались в 36 МБ. Несжатые jar xz ужимает до 18 МБ, потому что видит
-одинаковые куски классов во всех файлах сразу. Цена — место на диске после
-установки: jar становятся ~99 МБ вместо ~40.
-
-Содержимое записей не меняется, поэтому подписи jar (META-INF/*.SF) остаются верными.
+Entry contents are unchanged, so jar signatures (META-INF/*.SF) stay valid.
 """
 import sys
 import zipfile

@@ -16,8 +16,7 @@ build: project
 run: build
 	open macos/.build/Build/Products/Debug/NearPing.app
 
-# Release-сборка и образ для переноса на другую машину.
-# Подпись локальная (ad-hoc): Gatekeeper на чужом маке потребует явного разрешения.
+# Ad-hoc signed release image: Gatekeeper on another Mac asks for explicit approval.
 dmg: project
 	cd macos && xcodebuild -project NearPing.xcodeproj -scheme NearPing \
 		-configuration Release -derivedDataPath .build -allowProvisioningUpdates build
@@ -27,7 +26,7 @@ dmg: project
 	rm -f NearPing.dmg
 	hdiutil create -volname NearPing -srcfolder macos/.dmg -ov -format UDZO NearPing.dmg
 	rm -rf macos/.dmg
-	@echo "готово: NearPing.dmg"
+	@echo "done: NearPing.dmg"
 
 clean:
 	./gradlew clean

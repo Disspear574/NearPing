@@ -4,10 +4,7 @@ import com.disspear574.nearping.core.CallStatus
 
 import java.util.Locale
 
-/**
- * Английский обязателен, русский идёт вторым. Ресурсов Compose Desktop здесь
- * не заводим ради десятка строк, но правило то же: ни одной строки в коде экрана.
- */
+/** UI strings in English and Russian; screens never hold literal text. */
 data class Strings(
     val appName: String = "NearPing",
     val settings: String,

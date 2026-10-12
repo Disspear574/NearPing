@@ -51,14 +51,14 @@ class JvmCryptoTest {
     @Test
     fun sealedMessageOpensWithTheSameKey() {
         val key = crypto.randomBytes(32)
-        val message = "Дима зовёт".encodeToByteArray()
+        val message = "\u0414\u0438\u043c\u0430 \u0437\u043e\u0432\u0451\u0442".encodeToByteArray()
         val opened = crypto.open(key, crypto.seal(key, message))
         assertContentEquals(message, opened)
     }
 
     @Test
     fun sealedMessageDoesNotOpenWithAnotherKey() {
-        val message = "Дима зовёт".encodeToByteArray()
+        val message = "\u0414\u0438\u043c\u0430 \u0437\u043e\u0432\u0451\u0442".encodeToByteArray()
         val sealed = crypto.seal(crypto.randomBytes(32), message)
         assertNull(crypto.open(crypto.randomBytes(32), sealed))
     }
@@ -66,14 +66,14 @@ class JvmCryptoTest {
     @Test
     fun tamperedCiphertextIsRefused() {
         val key = crypto.randomBytes(32)
-        val sealed = crypto.seal(key, "Дима зовёт".encodeToByteArray())
+        val sealed = crypto.seal(key, "\u0414\u0438\u043c\u0430 \u0437\u043e\u0432\u0451\u0442".encodeToByteArray())
         sealed[sealed.size - 1] = (sealed[sealed.size - 1] + 1).toByte()
         assertNull(crypto.open(key, sealed))
     }
 
     @Test
     fun sealedLayoutMatchesCryptoKitCombined() {
-        // nonce(12) ‖ ciphertext ‖ tag(16) — иначе macOS не откроет наш кадр.
+        // nonce(12) ‖ ciphertext ‖ tag(16), otherwise macOS cannot open our frame.
         val key = crypto.randomBytes(32)
         val plaintext = ByteArray(40)
         assertEquals(12 + plaintext.size + 16, crypto.seal(key, plaintext).size)
@@ -105,7 +105,7 @@ class JvmSignerTest {
     fun signatureOverOtherDataFails() {
         val (priv, pub) = keyPair()
         val signer = JvmSigner(priv)
-        assertFalse(signer.verify("другое".encodeToByteArray(), signer.sign("challenge".encodeToByteArray()), pub))
+        assertFalse(signer.verify("other".encodeToByteArray(), signer.sign("challenge".encodeToByteArray()), pub))
     }
 
     @Test

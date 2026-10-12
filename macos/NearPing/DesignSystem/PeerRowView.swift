@@ -1,8 +1,6 @@
 import SwiftUI
 
-/// Строка человека в списке.
-///
-/// Ping — основное действие; срочный вызов спрятан в меню и требует удержания.
+/// One person row: ping is the main action, urgent is in the menu and needs a hold.
 struct PeerRowView: View {
     let row: PeerRow
     let onCall: () -> Void
@@ -25,7 +23,7 @@ struct PeerRowView: View {
                 )
                 .frame(width: Tokens.Metric.avatar, height: Tokens.Metric.avatar)
 
-            // Имя произвольной длины не должно выдавливать точку и кнопки за край.
+            // A name of any length must not push the dot and buttons off the edge.
             VStack(alignment: .leading, spacing: 1) {
                 Text(row.displayName)
                     .font(Tokens.Font.name)
@@ -96,8 +94,7 @@ struct PeerRowView: View {
         .padding(.vertical, 5)
         .background(
             RoundedRectangle(cornerRadius: Tokens.Metric.rowRadius, style: .continuous)
-                // Подсветка лёгкой примесью акцента, а не серым: так видно,
-                // что строка живая и принадлежит этому приложению.
+                // Tinted with a hint of accent rather than gray, so the row reads as live and belonging to this app.
                 .fill(hovered ? accent.opacity(0.14) : Color.clear)
         )
         .onHover { hovered = $0 }
@@ -128,8 +125,7 @@ struct PeerRowView: View {
         return row.pausedUntil == nil ? Tokens.Palette.secondary : Tokens.Palette.paused
     }
 
-    /// Онлайн и офлайн различаются формой, а не только цветом: в оттенках серого
-    /// залитый кружок и полый всё ещё различимы.
+    // Online and offline differ by shape, not only colour: filled versus hollow stays visible in grayscale.
     @ViewBuilder private var statusDot: some View {
         if row.pausedUntil != nil {
             Image(systemName: "pause.fill").font(.system(size: 8)).foregroundStyle(Tokens.Palette.paused)

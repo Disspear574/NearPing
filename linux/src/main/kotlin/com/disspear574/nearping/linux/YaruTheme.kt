@@ -16,16 +16,10 @@ object Yaru {
     val cardRadius = 12.dp
     val buttonRadius = 8.dp
 
-    /**
-     * Срочный вызов НЕ красится системным акцентом. При оранжевом акценте Ubuntu
-     * по умолчанию он слился бы с ним, поэтому цвет фиксированный, а знак
-     * дополнительно отличается формой — залитый кружок, не контурный.
-     */
     val accentLight = Color(0xFF4E5A40)
     val accentDark = Color(0xFFB5BEA3)
 
-    // Текст и обводка срочного — светлым красным, заливка под белым «!» — насыщенным.
-    // Один токен на обе роли не годился: прежний `#E9A092` на тёмной теме был пастельным.
+    // Urgent never follows the system accent (it would blend into Ubuntu's orange), so its colours are fixed.
     val urgentLight = Color(0xFFA53F32)
     val urgentDark = Color(0xFFFF8A70)
     val urgentFillLight = Color(0xFFB23A2C)

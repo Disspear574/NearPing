@@ -14,7 +14,7 @@ targets:
   NearPing:
     type: application
     platform: macOS
-    # Подпись живёт здесь и только здесь, вне git.
+    # Signing lives here only, outside git.
     configFiles:
       Debug: Signing.xcconfig
       Release: Signing.xcconfig

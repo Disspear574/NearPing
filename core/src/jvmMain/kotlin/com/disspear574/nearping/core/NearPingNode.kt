@@ -12,7 +12,7 @@ import java.nio.file.Path
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
-/** Что показывает интерфейс. Плоский снимок, пересобирается целиком. */
+/** Flat UI snapshot, rebuilt in full. */
 data class NodeState(
     val myDisplayName: String = "",
     val myFingerprint: String = "",
@@ -29,10 +29,7 @@ data class NodeState(
 
 data class NetworkInterfaceOption(val name: String, val addresses: String, val multicast: Boolean)
 
-/**
- * Что случилось с последним вызовом или запросом. Текст узел не хранит: строку
- * на языке системы подбирает интерфейс, иначе на русской Ubuntu статус шёл по-английски.
- */
+/** Outcome of the last call or request; the UI picks the localized text. */
 data class CallStatus(val event: Event) {
     enum class Kind { NEUTRAL, GOOD, WARN, BAD }
     enum class Event(val kind: Kind) {
@@ -47,15 +44,10 @@ data class CallStatus(val event: Event) {
     val kind: Kind get() = event.kind
 }
 
-/** Входящий вызов, который интерфейс должен показать. */
+/** Incoming call for the UI to show. */
 data class IncomingCall(val keyHex: String, val displayName: String, val callId: String, val urgent: Boolean)
 
-/**
- * Узел под JVM: собирает ядро, сокеты и mDNS.
- *
- * Ядро не потокобезопасно, а события приходят с потоков чтения, приёма соединений
- * и JmDNS. Поэтому всё, что трогает ядро, выполняется на одном потоке.
- */
+/** JVM node wiring core, sockets and mDNS; the core is not thread-safe, so all core access runs on one worker thread. */
 class NearPingNode(directory: Path) {
     private val worker = Executors.newSingleThreadScheduledExecutor { runnable ->
         Thread(runnable, "nearping-engine").apply { isDaemon = true }
@@ -160,12 +152,10 @@ class NearPingNode(directory: Path) {
         publish()
     }
 
-    // MARK: действия пользователя
 
     fun rename(name: String) = onWorker {
         keyStore.setDisplayName(name)
-        // Имя едет в hello и в TXT-запись: сессии переподнимаются, служба
-        // перерегистрируется. Иначе соседи видят старое имя до перезапуска.
+        // The name travels in hello and TXT: sessions reconnect and the service re-registers, else neighbours keep the old name.
         engine.rename(name)
         restartDiscovery()
     }
@@ -190,7 +180,6 @@ class NearPingNode(directory: Path) {
         publish()
     }
 
-    // MARK: внутреннее
 
     private fun onWorker(body: () -> Unit) {
         worker.execute {

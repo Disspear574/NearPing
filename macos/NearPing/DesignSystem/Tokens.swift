@@ -1,11 +1,7 @@
 import SwiftUI
 import AppKit
 
-/// Токены попапа. Значения из спеки `.claude/specs/2026-09-22-nearping-design.md`.
-///
-/// Фон сплошной, а не материал: на прозрачном слое контраст зависит от обоев под
-/// окном, и любой зашитый оттенок рано или поздно оказывается нечитаемым. Когда фон
-/// известен, контраст можно посчитать и гарантировать.
+/// Popup tokens; the background is solid because contrast over a transparent layer depends on the wallpaper.
 enum Tokens {
     enum Metric {
         static let popoverWidth: CGFloat = 320
@@ -35,14 +31,7 @@ enum Tokens {
         static let online = dynamic(light: 0x4E5A40, dark: 0xB5BEA3)
         static let offline = dynamic(light: 0x6E6E78, dark: 0xA0A0AA)
 
-        /// Системным акцентом не подменяется никогда: у человека с зелёным акцентом
-        /// срочный вызов обязан остаться красным.
-        ///
-        /// Два токена, потому что одного не хватает: текст на тёмном фоне требует
-        /// светлого красного, а заливка под белым «!» — тёмного. Прежний единый
-        /// `#E9A092` на тёмной теме выходил пастельным и срочность не читалась.
-        /// `urgent` — текст и обводка (≥ 4.5:1 к фону), `urgentFill` — заливка
-        /// с белым содержимым (белый к ней ≥ 4.5:1).
+        // Never follows the system accent; `urgent` is text and outline, `urgentFill` sits under white content, both >= 4.5:1.
         static let urgent = dynamic(light: 0xA53F32, dark: 0xFF8A70)
         static let urgentFill = dynamic(light: 0xB23A2C, dark: 0xD63A2A)
 

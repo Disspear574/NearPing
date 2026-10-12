@@ -10,12 +10,7 @@ interface SessionEvents {
     fun onFailed(reason: String)
 }
 
-/**
- * Одно соединение: рукопожатие, вывод общего ключа, запечатывание кадров.
- *
- * Протокол симметричен — обе стороны сразу шлют представление и свой вызов,
- * поэтому неважно, кто соединился первым.
- */
+/** One connection: handshake, shared-key derivation and frame sealing. */
 class Session(
     private val identity: Identity,
     private val signer: Signer,
@@ -37,7 +32,6 @@ class Session(
 
     val isEstablished: Boolean get() = sessionKey != null
 
-    /** Вызывается сразу после установки TCP-соединения, с обеих сторон. */
     fun start() {
         val challenge = crypto.randomBytes(CHALLENGE_BYTES)
         myChallenge = challenge
@@ -58,7 +52,6 @@ class Session(
         }
     }
 
-    /** Отправляет сообщение по установленному соединению. До рукопожатия молчит. */
     fun sendMessage(message: Message): Boolean {
         val key = sessionKey ?: return false
         send(Framing.frame(crypto.seal(key, Wire.encode(message))))
@@ -80,8 +73,7 @@ class Session(
             is Message.Hello -> onHello(message)
             is Message.AuthChallenge -> onChallenge(message)
             is Message.AuthResponse -> onResponse(message)
-            // До рукопожатия ничего содержательного принимать нельзя: личность
-            // собеседника ещё не подтверждена, и верить сообщению не на чем.
+            // Nothing is accepted before the handshake: the peer identity is not yet confirmed.
             else -> fail("message before handshake: $message")
         }
     }
@@ -129,7 +121,7 @@ class Session(
         if (!signer.verify(signed, Base64Url.decode(response.signature), them.publicKey)) {
             return fail("signature does not verify")
         }
-        // Вызов одноразовый: иначе подслушанную пару вызов-ответ можно предъявить снова.
+        // Single-use challenge, so an overheard challenge-response pair cannot be replayed.
         challengeSpent = true
         peerEphemeralKey = ephemeralKey
         maybeEstablish()
@@ -144,8 +136,7 @@ class Session(
         val theirChallengeBytes = theirChallenge ?: return
 
         val shared = crypto.sharedSecret(mine.privateKey, theirs)
-        // Соль должна совпасть на обеих сторонах, а «свой» и «чужой» вызовы у них
-        // поменяны местами — поэтому порядок задаётся сравнением, а не ролью.
+        // Both sides must derive the same salt, so order by comparison, not by role.
         val salt = if (compare(myChallengeBytes, theirChallengeBytes) <= 0) {
             myChallengeBytes + theirChallengeBytes
         } else {
@@ -157,7 +148,7 @@ class Session(
 
     private fun deliver(message: Message) {
         val them = peer ?: return fail("message without identity")
-        // Барьер доверия: видеть в сети можно всех, вызывать — только принявших запрос.
+        // Trust barrier: only accepted peers may call.
         if (message is Message.Ping && !registry.isTrusted(them.publicKey)) return
         events.onMessage(them, message)
     }

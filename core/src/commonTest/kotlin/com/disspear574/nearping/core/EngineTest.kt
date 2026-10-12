@@ -27,7 +27,7 @@ private class Recorded : EngineListener {
     }
 }
 
-/** Две машины в одной «сети»: доставка через очереди, порядок детерминирован. */
+/** Two machines in one fake network with queue delivery, so ordering is deterministic. */
 private class TwoMachines(staleTrustedName: String? = null, legacyB: Boolean = false) {
     val clock = TestClock()
     val aKey = ByteArray(32) { 0x11 }
@@ -66,7 +66,6 @@ private class TwoMachines(staleTrustedName: String? = null, legacyB: Boolean = f
     val b = Engine(Identity(bKey, "Борис"), FakeSigner(bKey), compatibleCrypto,
         PeerRegistry(MemoryPeers()), Wire(toB = false), clock, bEvents)
 
-    // Аня набирает (её ключ меньше), Борис принимает входящее.
     val aConn = "out:$bHex"
     val bConn = "in:1"
 
@@ -204,7 +203,7 @@ class EngineConnectionTest {
         val net = TwoMachines()
         net.a.onPeerFound(Peer(net.bKey, "Борис"), "b:1")
         net.b.onPeerFound(Peer(net.aKey, "Аня"), "a:1")
-        // Иначе обе стороны набирают одновременно и держат два соединения на пару.
+        // Otherwise both sides dial at once and keep two connections per pair.
         assertEquals(listOf("out:${net.bHex}"), net.aDials)
         assertEquals(emptyList(), net.bDials)
     }
@@ -308,7 +307,6 @@ class EngineCallTest {
     fun pingDroppedByReceiverLimitIsNotReportedDelivered() {
         val net = TwoMachines()
         net.connect(); net.pairThem()
-        // Первый вызов задержался в сети; отправитель честно выждал 3 с и позвал снова.
         val first = net.a.call(net.bHex, false)!!
         net.clock.now += 3
         val second = net.a.call(net.bHex, false)!!

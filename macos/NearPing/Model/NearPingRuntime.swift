@@ -3,7 +3,7 @@ import Observation
 import OSLog
 @preconcurrency import core
 
-/// Строка списка: плоский снимок для интерфейса.
+/// Peer list row: a flat snapshot for the UI.
 struct PeerRow: Identifiable, Equatable {
     let id: String
     let displayName: String
@@ -20,7 +20,7 @@ struct PeerRow: Identifiable, Equatable {
     enum StatusKind { case neutral, good, paused, failed }
 }
 
-/// Связывает ядро с интерфейсом. Всё ядро трогается только с главного потока.
+/// Connects the core to the UI; the core is touched only from the main thread.
 @MainActor
 @Observable
 final class NearPingRuntime {
@@ -34,7 +34,7 @@ final class NearPingRuntime {
     private(set) var myFingerprint: String = ""
     var myDisplayName: String = ""
     private(set) var pausedUntil: Date?
-    /// Разрешение на локальную сеть отозвано или не выдано: без него mDNS молчит.
+    // Local network permission revoked or not granted: mDNS is silent without it.
     private(set) var localNetworkDenied = false
 
     private let keyStore = AppleKeyStore.shared
@@ -45,7 +45,7 @@ final class NearPingRuntime {
     private var retryTicks = 0
     private let urgent = UrgentAlert()
     private var engine: Engine?
-    // Сеть держит делегата слабо — сильная ссылка живёт здесь, иначе он умрёт сразу.
+    // The network holds its delegate weakly; this strong reference keeps it alive.
     private var networkDelegate: Delegate?
     private var callStatuses: [String: (String, PeerRow.StatusKind)] = [:]
     private var statusClears: [String: Task<Void, Never>] = [:]
@@ -91,15 +91,13 @@ final class NearPingRuntime {
         log.notice("runtime started as \(identity.fingerprint, privacy: .public)")
     }
 
-    // MARK: действия пользователя
+    // MARK: User actions
 
     func rename(to name: String) {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, trimmed != myDisplayName else { return }
         keyStore.setDisplayName(name: trimmed)
-        // Имя едет в hello и в TXT-запись. Ядро само рвёт и переподнимает сессии,
-        // а доверие, входящие запросы, лимиты и пауза остаются на месте —
-        // пересоздавать движок и сеть незачем, раньше это теряло чужие запросы.
+        // The name travels in hello and TXT; the core reconnects sessions itself and keeps trust, requests, limits and pause.
         engine?.rename(displayName: trimmed)
         myDisplayName = engine?.myDisplayName ?? trimmed
         network.retryDiscovery()
@@ -147,7 +145,7 @@ final class NearPingRuntime {
         if localNetworkDenied { network.retryDiscovery() }
     }
 
-    // MARK: состояние
+    // MARK: State
 
     fileprivate func refresh() {
         guard let engine else { return }
@@ -209,15 +207,13 @@ final class NearPingRuntime {
         urgent.show(callerName: peer.displayName, isUrgent: isUrgent) { [weak self] in
             self?.engine?.markSeen(keyHex: peer.keyHex, callId: callId)
         }
-        // Обычный Ping остаётся в истории системных уведомлений, но его звук
-        // контролирует плашка, чтобы кнопка «Стоп» останавливала всё.
+        // A normal ping stays in system notification history, but the banner owns its sound so Stop silences everything.
         if !isUrgent { notifier.ordinaryCall(from: peer.displayName, playSound: false) }
     }
 
-    // MARK: мосты
+    // MARK: Bridges
 
-    /// Ядро и сеть зовут только с главного потока, поэтому мосты на нём и живут.
-    /// Протоколы из Kotlin об акторах не знают — отсюда @preconcurrency.
+    // Core and network call these from the main thread only; Kotlin protocols know nothing of actors, hence @preconcurrency.
     @MainActor
     private final class Listener: @preconcurrency EngineListener {
         private unowned let owner: NearPingRuntime

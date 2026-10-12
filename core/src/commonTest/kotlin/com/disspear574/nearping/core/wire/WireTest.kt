@@ -35,7 +35,7 @@ class WireTest {
     @Test
     fun encodedMessageCarriesProtocolVersion() {
         val json = Wire.encode(Message.Ping("p1", false)).decodeToString()
-        assertTrue(json.contains("\"v\":1"), "нет версии протокола: $json")
+        assertTrue(json.contains("\"v\":1"), "no protocol version: $json")
     }
 
     @Test

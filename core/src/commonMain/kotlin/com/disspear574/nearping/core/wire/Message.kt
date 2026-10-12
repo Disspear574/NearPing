@@ -5,30 +5,23 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
-/**
- * Подтверждение: дошло до машины, затем человек увидел. `RATE_LIMITED` — дошло,
- * но получатель отбросил вызов по лимиту частоты: человек его не услышал.
- */
+/** Delivery acknowledgement; RATE_LIMITED means the receiver dropped the call. */
 enum class AckState { DELIVERED, SEEN, RATE_LIMITED }
 
 @Serializable
 sealed interface Message {
 
-    /** Представление при открытии соединения. */
+    /** Greeting sent when a connection opens. */
     @Serializable
     @SerialName("hello")
     data class Hello(val publicKey: String, val displayName: String) : Message
 
-    /** Вызов: 32 случайных байта, одноразовые. */
+    /** Single-use 32-byte challenge. */
     @Serializable
     @SerialName("auth_challenge")
     data class AuthChallenge(val challenge: String) : Message
 
-    /**
-     * Ответ на вызов: эфемерный ключ обмена и подпись над `challenge ‖ ephemeralKey`
-     * постоянным ключом личности. Подпись связывает эфемерный ключ с личностью —
-     * без неё посредник подменил бы ключ и слушал обе стороны.
-     */
+    /** Challenge response: ephemeral key plus a signature binding it to the identity, against a man-in-the-middle. */
     @Serializable
     @SerialName("auth_response")
     data class AuthResponse(
@@ -45,7 +38,7 @@ sealed interface Message {
     @SerialName("pair_accept")
     data object PairAccept : Message
 
-    /** Отказ показывается отправителю: иначе он будет слать запрос снова. */
+    /** Pair refusal, shown to the sender so it stops re-sending. */
     @Serializable
     @SerialName("pair_reject")
     data object PairReject : Message
@@ -58,7 +51,7 @@ sealed interface Message {
     @SerialName("ack")
     data class Ack(val id: String, val state: AckState) : Message
 
-    /** Пауза едет по доверенному соединению, а не в TXT: её видят только контакты. */
+    /** Pause state, sent over the trusted connection so only contacts see it. */
     @Serializable
     @SerialName("presence")
     data class Presence(

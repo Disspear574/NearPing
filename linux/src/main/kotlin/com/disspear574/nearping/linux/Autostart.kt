@@ -12,7 +12,7 @@ class Autostart(private val preferences: Preferences) {
         "autostart", "nearping.desktop",
     )
 
-    /** Only a packaged launch knows a launcher path that survives a reboot. */
+    // Only a packaged launch has a launcher path that survives a reboot.
     val isAvailable: Boolean get() = launcher != null
 
     fun isEnabled(): Boolean = Files.exists(file)
@@ -21,7 +21,7 @@ class Autostart(private val preferences: Preferences) {
         if (enabled) write() else Files.deleteIfExists(file)
     }.isSuccess
 
-    /** Turns it on once; later rewrites keep the entry pointing at a moved launcher. */
+    // Rewrites keep the entry pointing at a moved launcher.
     fun onStart() {
         if (!isAvailable) return
         if (!preferences.getBoolean(OFFERED_KEY, false)) {
