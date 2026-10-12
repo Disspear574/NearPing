@@ -12,6 +12,7 @@ import javax.jmdns.ServiceListener
 
 interface DiscoveryEvents {
     fun onPeerFound(peer: Peer, address: InetAddress, port: Int)
+    fun onForeignPeerFound(peer: Peer, protocolVersion: Int)
     fun onPeerLost(keyHex: String)
 }
 
@@ -64,7 +65,12 @@ class JmdnsDiscovery(private val events: DiscoveryEvents) {
                     }
                 }
                 debug("txt=$txt")
-                val peer = TxtRecord.parse(txt) ?: return debug("txt did not parse")
+                val peer = TxtRecord.parse(txt) ?: run {
+                    val foreign = TxtRecord.parseAnyVersion(txt) ?: return debug("txt did not parse")
+                    val version = TxtRecord.version(txt) ?: return debug("txt has no version")
+                    if (foreign.publicKey.contentEquals(identity.publicKey)) return debug("that is me")
+                    return events.onForeignPeerFound(foreign, version)
+                }
                 if (peer.publicKey.contentEquals(identity.publicKey)) return debug("that is me")
                 // Первый отклик часто несёт только link-local IPv6 без области
                 // видимости — соединиться по такому нельзя. Ждём отклика с IPv4.

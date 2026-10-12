@@ -45,6 +45,8 @@
 "not delivered: too often" = "not delivered: too often";
 "not delivered" = "not delivered";
 "offline" = "offline";
+"Open at login" = "Open at login";
+"other NearPing version" = "other NearPing version, update needed";
 "online" = "online";
 "paused until %@" = "Paused until %@";
 "request sent" = "request sent";

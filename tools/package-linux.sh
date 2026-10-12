@@ -59,7 +59,7 @@ cat > "$stage/nearping" <<'LAUNCHER'
 #!/bin/sh
 # Запуск NearPing из любого каталога: Java лежит рядом, системная не нужна.
 dir="$(cd "$(dirname "$0")" && pwd)"
-exec "$dir/jre/bin/java" -Xss2m -cp "$dir/lib/*" com.disspear574.nearping.linux.MainKt "$@"
+NEARPING_LAUNCHER="$dir/nearping" exec "$dir/jre/bin/java" -Xss2m -cp "$dir/lib/*" com.disspear574.nearping.linux.MainKt "$@"
 LAUNCHER
 chmod +x "$stage/nearping" "$stage/jre/bin/"*
 
