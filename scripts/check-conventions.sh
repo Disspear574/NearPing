@@ -8,14 +8,14 @@ files() { git ls-files --cached --others --exclude-standard -- "$@" | while read
 
 status=0
 
-# Desktop entries carry their Russian translation as `Key[ru]=`.
+# Desktop entries carry their Russian translation as `Key[ru]=`; README.ru.md is the Russian readme.
 cyrillic=$(files '*.kt' '*.kts' '*.swift' '*.py' '*.sh' '*.yml' '*.md' '*.xcconfig*' 'Makefile' '.gitignore' \
-  | grep -vE '(^|/)(ru\.lproj/|Strings\.kt$|commonTest/|jvmTest/)' \
+  | grep -vE '(^|/)(ru\.lproj/|Strings\.kt$|commonTest/|jvmTest/)|\.ru\.md$' \
   | python3 -c '
 import re, sys
 for path in sys.stdin.read().split():
     for n, line in enumerate(open(path, encoding="utf-8"), 1):
-        if re.search("[\u0400-\u04FF]", line) and "[ru]=" not in line:
+        if re.search("[\u0400-\u04FF]", line) and "[ru]=" not in line and "README.ru.md" not in line:
             print(f"{path}:{n}: {line.rstrip()}")
 ')
 if [ -n "$cyrillic" ]; then
