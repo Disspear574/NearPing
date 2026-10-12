@@ -14,6 +14,7 @@ data class Strings(
     val contactActions: String,
     val back: String,
     val appearance: String,
+    val openAtLogin: String,
     val systemTheme: String,
     val lightTheme: String,
     val darkTheme: String,
@@ -33,6 +34,7 @@ data class Strings(
     val nobodyNearby: String,
     val online: String,
     val offline: String,
+    val otherVersion: String,
     val pausedUntil: String,
     val add: String,
     val accept: String,
@@ -78,7 +80,7 @@ data class Strings(
     companion object {
         private val english = Strings(
             settings = "Settings", back = "Back", contactActions = "Contact actions",
-            appearance = "Appearance", systemTheme = "System", lightTheme = "Light", darkTheme = "Dark",
+            appearance = "Appearance", openAtLogin = "Open at login", systemTheme = "System", lightTheme = "Light", darkTheme = "Dark",
             save = "Save", available = "Available", stop = "Stop",
             removeContact = "Remove contact", removeContactQuestion = "Remove contact?", cancel = "Cancel",
             urgentInMenu = "Urgent Ping is in the contact menu",
@@ -100,6 +102,7 @@ data class Strings(
             nobodyNearby = "Nobody else on this network yet. Open NearPing on another machine.",
             online = "online",
             offline = "offline",
+            otherVersion = "other NearPing version, update needed",
             pausedUntil = "paused",
             add = "Add",
             accept = "Accept",
@@ -121,7 +124,7 @@ data class Strings(
 
         private val russian = Strings(
             settings = "Настройки", back = "Назад", contactActions = "Действия с контактом",
-            appearance = "Тема", systemTheme = "Системная", lightTheme = "Светлая", darkTheme = "Тёмная",
+            appearance = "Тема", openAtLogin = "Запускать при входе", systemTheme = "Системная", lightTheme = "Светлая", darkTheme = "Тёмная",
             save = "Сохранить", available = "На связи", stop = "Стоп",
             removeContact = "Удалить контакт", removeContactQuestion = "Удалить контакт?", cancel = "Отмена",
             urgentInMenu = "Срочный Ping — в меню контакта",
@@ -143,6 +146,7 @@ data class Strings(
             nobodyNearby = "Пока никого рядом. Откройте NearPing на другой машине.",
             online = "в сети",
             offline = "не в сети",
+            otherVersion = "другая версия NearPing, нужно обновить",
             pausedUntil = "на паузе",
             add = "Добавить",
             accept = "Принять",

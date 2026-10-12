@@ -37,7 +37,7 @@ private fun dataDirectory(): Path {
     return Path.of(base, "nearping")
 }
 
-fun main() = application {
+fun main(args: Array<String>) = application {
     val strings = remember { Strings.current() }
     val node = remember { NearPingNode(dataDirectory()) }
     val state by node.state.collectAsState()
@@ -49,7 +49,9 @@ fun main() = application {
         )
     }
     var incoming by remember { mutableStateOf<IncomingCall?>(null) }
-    var windowVisible by remember { mutableStateOf(true) }
+    val autostart = remember { Autostart(preferences).also { it.onStart() } }
+    var launchAtLogin by remember { mutableStateOf(autostart.isEnabled()) }
+    var windowVisible by remember { mutableStateOf(Autostart.BACKGROUND_ARG !in args) }
     var trayReady by remember { mutableStateOf(false) }
     var trayUnavailable by remember { mutableStateOf(false) }
     var notificationFailure by remember { mutableStateOf(false) }
@@ -104,7 +106,7 @@ fun main() = application {
     }
     LaunchedEffect(Unit) {
         delay(5000)
-        if (!trayReady) trayUnavailable = true
+        if (!trayReady) { trayUnavailable = true; windowVisible = true }
     }
 
     Window(
@@ -159,6 +161,11 @@ fun main() = application {
                         state = state,
                         strings = strings,
                         themeMode = themeMode,
+                        launchAtLogin = launchAtLogin.takeIf { autostart.isAvailable },
+                        onLaunchAtLogin = { enabled ->
+                            autostart.setEnabled(enabled)
+                            launchAtLogin = autostart.isEnabled()
+                        },
                         onTheme = { mode ->
                             themeMode = mode
                             preferences.put("theme", mode.name)

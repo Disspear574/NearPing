@@ -20,6 +20,13 @@ class TxtRecordTest {
     }
 
     @Test
+    fun foreignVersionKeepsPeerAndVersion() {
+        val txt = TxtRecord.of(identity) + ("v" to "2")
+        assertEquals(identity.fingerprint, TxtRecord.parseAnyVersion(txt)?.fingerprint)
+        assertEquals(2, TxtRecord.version(txt))
+    }
+
+    @Test
     fun missingKeyIsIgnored() {
         assertNull(TxtRecord.parse(mapOf("v" to "1", "n" to "Дима")))
     }

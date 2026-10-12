@@ -260,6 +260,31 @@ class EngineConnectionTest {
         net.a.onDisconnected(net.aConn)
         assertTrue(net.aEvents.callStates.any { it.second == CallState.FAILED })
     }
+
+    @Test
+    fun answeredCallDoesNotFailOnLaterDisconnect() {
+        val net = TwoMachines()
+        net.connect()
+        net.pairThem()
+        net.a.call(net.bHex, urgent = false)
+        net.pump()
+        net.a.onDisconnected(net.aConn)
+        assertEquals(listOf(CallState.SENT, CallState.DELIVERED), net.aEvents.callStates.map { it.second })
+    }
+
+    @Test
+    fun peerOnAnotherProtocolVersionIsListedButNotDialled() {
+        val net = TwoMachines()
+        net.a.onForeignPeerFound(Peer(net.bKey, "Борис"), protocolVersion = 2)
+        val view = net.a.peers().single()
+        assertEquals(2, view.foreignProtocolVersion)
+        assertFalse(view.isOnline)
+        assertEquals(emptyList(), net.aDials)
+        net.a.retryConnections()
+        assertEquals(emptyList(), net.aDials)
+        net.a.onPeerFound(Peer(net.bKey, "Борис"), "b:1")
+        assertNull(net.a.peers().single().foreignProtocolVersion)
+    }
 }
 
 class EngineCallTest {
