@@ -2,7 +2,7 @@ import Foundation
 import CryptoKit
 @preconcurrency import core
 
-/// Криптография на CryptoKit. Без состояния, поэтому безопасна для любых потоков.
+/// CryptoKit crypto; stateless, so safe from any thread.
 final class AppleCrypto: Crypto, @unchecked Sendable {
     func randomBytes(count: Int32) -> KotlinByteArray {
         var bytes = [UInt8](repeating: 0, count: Int(count))
@@ -55,8 +55,7 @@ final class AppleCrypto: Crypto, @unchecked Sendable {
     }
 }
 
-/// Системные часы. Пауза сравнивается с ними, поэтому они вынесены интерфейсом:
-/// в тестах ядра время двигают руками.
+/// System clock behind an interface so core tests can move time by hand.
 final class SystemClock: Clock, @unchecked Sendable {
     func nowEpochSeconds() -> Int64 { Int64(Date().timeIntervalSince1970) }
 }

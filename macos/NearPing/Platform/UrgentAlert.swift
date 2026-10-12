@@ -2,11 +2,7 @@ import AppKit
 import SwiftUI
 import OSLog
 
-/// Входящий вызов: своё окно поверх всего и управляемый звук.
-///
-/// Намеренно НЕ через систему уведомлений — её глушит «Не беспокоить». Окно и звук
-/// к уведомлениям отношения не имеют, поэтому Focus им не помеха, а звук уходит
-/// в текущее устройство вывода, то есть в те самые наушники.
+/// Incoming call as its own window with controlled sound, deliberately not a notification, which Do Not Disturb silences.
 @MainActor
 final class UrgentAlert {
     private let log = Logger(subsystem: "com.disspear574.nearping", category: "urgent")
@@ -23,9 +19,7 @@ final class UrgentAlert {
         self.onStopped = onStopped
 
         if isUrgent { showEdges() }
-        // У menu-bar приложения NSScreen.main может отсутствовать, а первый
-        // NSPanel тогда остаётся в позиции по умолчанию за пределами видимой
-        // области. Отдельная плашка на каждом активном экране это исключает.
+        // A menu-bar app may lack NSScreen.main and the first NSPanel would sit off-screen; one banner per active screen avoids that.
         let screens = NSScreen.screens.isEmpty ? [NSScreen.main].compactMap { $0 } : NSScreen.screens
         bannerPanels = screens.map { screen in
             makeBannerPanel(on: screen, callerName: callerName, isUrgent: isUrgent)

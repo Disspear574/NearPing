@@ -4,8 +4,7 @@ import UserNotifications
 import OSLog
 import Observation
 
-/// Обычный вызов: системное уведомление и мягкий звук.
-/// Уважает «Не беспокоить» намеренно — ломать чужой фокус позволено только срочному.
+/// Normal call: system notification and a soft sound; respects Do Not Disturb on purpose, only urgent may break focus.
 @MainActor
 @Observable
 final class Notifier {

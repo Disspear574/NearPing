@@ -1,10 +1,6 @@
 package com.disspear574.nearping.core
 
-/**
- * TXT-запись Bonjour. Видна ВСЕМ в сети, не только контактам, поэтому несёт
- * необходимый минимум: версию, публичный ключ и имя. Статус паузы сюда не кладётся —
- * он едет по установленному доверенному соединению.
- */
+/** Bonjour TXT record; visible to everyone on the network, so it carries the bare minimum. */
 object TxtRecord {
     const val SERVICE_TYPE = "_nearping._tcp"
 
@@ -14,11 +10,9 @@ object TxtRecord {
         "n" to identity.displayName,
     )
 
-    /** null — запись чужой версии или испорченная. Такие игнорируются целиком. */
     fun parse(txt: Map<String, String>): Peer? =
         if (version(txt) == Core.protocolVersion) parseAnyVersion(txt) else null
 
-    /** Peer of any protocol version: a colleague on another build is shown, not hidden. */
     fun parseAnyVersion(txt: Map<String, String>): Peer? {
         val key = txt["pk"]?.let { runCatching { Base64Url.decode(it) }.getOrNull() } ?: return null
         if (key.size != IDENTITY_KEY_BYTES) return null

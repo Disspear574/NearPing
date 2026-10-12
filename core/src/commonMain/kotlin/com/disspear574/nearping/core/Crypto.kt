@@ -1,18 +1,14 @@
 package com.disspear574.nearping.core
 
-/** Эфемерная пара X25519: живёт одно соединение и не сохраняется. */
+/** Ephemeral X25519 key pair, valid for one connection. */
 class EphemeralKeyPair(val privateKey: ByteArray, val publicKey: ByteArray)
 
-/**
- * Криптографические примитивы платформы. На Apple — CryptoKit, на JVM — встроенные средства Java 21.
- * Ядро само ничего не считает: своя реализация криптографии — верный способ ошибиться.
- */
+/** Platform crypto primitives; the core never implements crypto itself. */
 interface Crypto {
     fun randomBytes(count: Int): ByteArray
     fun createEphemeralKeyPair(): EphemeralKeyPair
     fun sharedSecret(privateKey: ByteArray, peerPublicKey: ByteArray): ByteArray
     fun deriveSessionKey(sharedSecret: ByteArray, salt: ByteArray): ByteArray
     fun seal(key: ByteArray, plaintext: ByteArray): ByteArray
-    /** null, если печать не сходится: подделка, чужой ключ или испорченный кадр. */
     fun open(key: ByteArray, sealed: ByteArray): ByteArray?
 }

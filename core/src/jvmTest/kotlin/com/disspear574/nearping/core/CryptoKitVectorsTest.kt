@@ -4,12 +4,7 @@ import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertTrue
 
-/**
- * Эталонные байты, снятые с CryptoKit на macOS (Curve25519, HKDF<SHA256>, ChaChaPoly)
- * на фиксированных входах, 2026-09-23. Реализация под JVM обязана выдавать ровно их,
- * иначе Linux и Mac не договорятся. Подпись Ed25519 у CryptoKit рандомизирована,
- * поэтому сверяется не байтами, а проверкой в обе стороны.
- */
+/** Reference bytes taken from CryptoKit on fixed inputs; the JVM implementation must match them so Linux and Mac interoperate. */
 class CryptoKitVectorsTest {
     private val crypto = JvmCrypto()
     private val a = ByteArray(32) { it.toByte() }
@@ -32,7 +27,7 @@ class CryptoKitVectorsTest {
     }
 
     @Test fun ed25519SignatureAcceptedByCryptoKitIsAcceptedHere() {
-        // Подпись Ed25519 детерминирована (RFC 8032); эту CryptoKit признал верной.
+        // Ed25519 is deterministic (RFC 8032); CryptoKit accepted this signature.
         val signature = hex("cf84158006c5b4e7beb56afbdfa1737492e2a3d84125b7cccece37cf3ca34ef6" +
             "ad06e899309b1f011e6b738e5b04957320808edf25756c72b3c15440b0bd3c0a")
         val data = "nearping-vector".encodeToByteArray()
@@ -50,8 +45,8 @@ class CryptoKitVectorsTest {
     @Test fun chachaPolyCombined() {
         val key = ByteArray(32) { 0x42 }
         val sealed = hex("000102030405060708090a0b34d484fe4a85a3ec49816a1e7fea8963b7491282ad884c52a8ac585559b7fb24ff1314")
-        assertContentEquals(sealed, crypto.sealWithNonce(key, ByteArray(12) { it.toByte() }, "Дима зовёт".encodeToByteArray()))
-        assertContentEquals("Дима зовёт".encodeToByteArray(), crypto.open(key, sealed))
+        assertContentEquals(sealed, crypto.sealWithNonce(key, ByteArray(12) { it.toByte() }, "\u0414\u0438\u043c\u0430 \u0437\u043e\u0432\u0451\u0442".encodeToByteArray()))
+        assertContentEquals("\u0414\u0438\u043c\u0430 \u0437\u043e\u0432\u0451\u0442".encodeToByteArray(), crypto.open(key, sealed))
     }
 
     private fun hex(s: String) = ByteArray(s.length / 2) { s.substring(it * 2, it * 2 + 2).toInt(16).toByte() }

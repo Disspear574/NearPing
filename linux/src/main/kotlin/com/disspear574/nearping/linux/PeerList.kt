@@ -363,7 +363,7 @@ private fun ContactRow(
         }
         Spacer(Modifier.width(10.dp))
 
-        // Имя произвольной длины не должно выдавливать точку и кнопку за край.
+        // A name of any length must not push the dot and button off the edge.
         Column(Modifier.weight(1f)) {
             Text(peer.displayName, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(
@@ -422,7 +422,7 @@ private fun ContactRow(
 
 @Composable
 private fun StatusDot(peer: PeerView, colors: NearPingColors) {
-    // Залитый кружок против полого: различимо и в оттенках серого.
+    // Filled versus hollow circle stays distinguishable in grayscale.
     when {
         peer.isPaused -> Box(Modifier.size(8.dp).clip(CircleShape).background(colors.paused))
         peer.isOnline -> Box(Modifier.size(8.dp).clip(CircleShape).background(colors.online))

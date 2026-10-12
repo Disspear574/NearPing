@@ -14,12 +14,7 @@ interface TransportEvents {
     fun onDisconnected(connectionId: String)
 }
 
-/**
- * TCP под JVM: слушающий сокет плюс исходящие соединения.
- *
- * На каждое соединение по потоку чтения. Для группы в два десятка человек это
- * дешевле, чем возиться с селекторами, и несравнимо понятнее.
- */
+/** JVM TCP: a listening socket plus outgoing connections, one reader thread each. */
 class SocketTransport(private val events: TransportEvents) : Transport {
     private val connections = ConcurrentHashMap<String, Socket>()
     private val endpoints = ConcurrentHashMap<String, Pair<InetAddress, Int>>()
@@ -50,7 +45,6 @@ class SocketTransport(private val events: TransportEvents) : Transport {
         connections.clear()
     }
 
-    /** Адрес пира, найденный обнаружением. Соединение набирается по нему. */
     fun rememberEndpoint(keyHex: String, address: InetAddress, port: Int) {
         endpoints[keyHex] = address to port
     }
@@ -106,7 +100,7 @@ class SocketTransport(private val events: TransportEvents) : Transport {
                     events.onBytes(connectionId, buffer.copyOf(read))
                 }
             } catch (e: IOException) {
-                // Разрыв — обычное дело: машину усыпили, сеть моргнула.
+                // A drop is normal: sleeping machine, network blip.
             } finally {
                 close(connectionId, socket)
             }

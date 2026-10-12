@@ -94,8 +94,8 @@ class PairingMachineTest {
     fun acceptUsesNameFromRequestNotFromAdvertisement() {
         val registry = PeerRegistry(MemoryStorage())
         val machine = PairingMachine(registry)
-        machine.onIncoming(Message.PairRequest("Дмитрий Кравцов"), peer(1, "старое имя"))
-        machine.accept(peer(1, "старое имя"))
+        machine.onIncoming(Message.PairRequest("Дмитрий Кравцов"), peer(1, "old name"))
+        machine.accept(peer(1, "old name"))
         assertEquals("Дмитрий Кравцов", registry.trusted.first().displayName)
     }
 

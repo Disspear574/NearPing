@@ -7,12 +7,7 @@ import androidx.compose.ui.graphics.vector.addPathNodes
 import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.unit.dp
 
-/**
- * Иконки интерфейса. Раньше вместо них стояли символы шрифта ⚙ ⋯ Ⅱ: их вид и размер
- * зависели от того, какой шрифт найдётся в системе, а на части установок шестерёнка
- * выходила цветным эмодзи. Контуры — из Material Icons (Apache 2.0), сетка 24×24;
- * цвет задаёт `Icon(tint = …)`.
- */
+/** UI icons: Material Icons outlines (Apache 2.0) on a 24x24 grid, tinted via `Icon(tint = ...)`. */
 object NearPingIcons {
     val Settings: ImageVector = icon(
         "Settings",

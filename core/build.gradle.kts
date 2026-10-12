@@ -33,7 +33,7 @@ kotlin {
     }
 }
 
-// XCFramework кладётся туда, где его ждёт macos/project.yml.
+// The XCFramework goes where macos/project.yml expects it.
 val installXCFramework by tasks.registering(Copy::class) {
     dependsOn("assembleCoreReleaseXCFramework")
     from(layout.buildDirectory.dir("XCFrameworks/release"))

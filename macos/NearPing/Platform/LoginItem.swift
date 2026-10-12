@@ -15,7 +15,7 @@ enum LoginItem {
         }
     }
 
-    /// Turns it on once for an installed copy; after that the user's choice stands.
+    // Turns it on once for an installed copy; after that the choice stands.
     static func enableOnFirstLaunch() {
         let defaults = UserDefaults.standard
         guard !defaults.bool(forKey: offeredKey), Bundle.main.bundlePath.hasPrefix("/Applications/") else { return }

@@ -1,8 +1,7 @@
 import Foundation
 @preconcurrency import core
 
-/// Доверенные пиры в JSON рядом с настройками приложения.
-/// Ключ хранится в hex: ByteArray через мост ездит дорого, а читать глазами полезно.
+/// Trusted peers as JSON next to the app settings; keys are hex because ByteArray is costly across the bridge.
 final class FilePeerStorage: PeerStorage, @unchecked Sendable {
     private struct Stored: Codable {
         let publicKeyHex: String

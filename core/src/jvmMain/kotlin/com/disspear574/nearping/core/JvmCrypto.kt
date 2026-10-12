@@ -15,12 +15,7 @@ import javax.crypto.Mac
 import javax.crypto.spec.IvParameterSpec
 import javax.crypto.spec.SecretKeySpec
 
-/**
- * Криптография под JVM на том, что есть в самой Java 21: X25519, Ed25519,
- * ChaCha20-Poly1305 и HMAC. Раньше тут был BouncyCastle — 8 МБ в пакете ради
- * четырёх примитивов. Байты обязаны совпадать с CryptoKit до последнего:
- * это держит `CryptoKitVectorsTest`.
- */
+/** JVM crypto on Java 21 built-ins; bytes must match CryptoKit exactly (see CryptoKitVectorsTest). */
 class JvmCrypto(private val random: SecureRandom = SecureRandom()) : Crypto {
 
     override fun randomBytes(count: Int): ByteArray =
@@ -34,13 +29,12 @@ class JvmCrypto(private val random: SecureRandom = SecureRandom()) : Crypto {
     override fun sharedSecret(privateKey: ByteArray, peerPublicKey: ByteArray): ByteArray =
         RawKeys.x25519(privateKey, peerPublicKey)
 
-    /** HKDF-SHA256 (RFC 5869). Ключ в 32 байта — ровно один блок расширения. */
     override fun deriveSessionKey(sharedSecret: ByteArray, salt: ByteArray): ByteArray {
         val prk = hmac(salt, sharedSecret)
         return hmac(prk, INFO + byteArrayOf(1)).copyOf(KEY_BYTES)
     }
 
-    /** Формат CryptoKit `.combined`: nonce ‖ ciphertext ‖ tag. */
+    // CryptoKit `.combined` layout: nonce ‖ ciphertext ‖ tag.
     override fun seal(key: ByteArray, plaintext: ByteArray): ByteArray =
         sealWithNonce(key, randomBytes(NONCE_BYTES), plaintext)
 
@@ -58,7 +52,6 @@ class JvmCrypto(private val random: SecureRandom = SecureRandom()) : Crypto {
                 IvParameterSpec(sealed, 0, NONCE_BYTES))
             cipher.doFinal(sealed, NONCE_BYTES, sealed.size - NONCE_BYTES)
         } catch (e: Exception) {
-            // Печать не сошлась: подделка, чужой ключ или испорченный кадр.
             null
         }
     }
@@ -75,15 +68,10 @@ class JvmCrypto(private val random: SecureRandom = SecureRandom()) : Crypto {
     }
 }
 
-/** Публичный ключ X25519 — это X25519(k, 9): умножение на базовую точку. */
 internal fun x25519PublicKey(privateKey: ByteArray): ByteArray =
     RawKeys.x25519(privateKey, ByteArray(32).also { it[0] = 9 })
 
-/**
- * Публичный ключ Ed25519 из 32-байтного зерна. Отдельного API у JDK нет, поэтому
- * генератору подсовывается «случайность», равная зерну: он берёт из неё ровно
- * 32 байта. Если реализация JDK это поменяет, упадёт `CryptoKitVectorsTest`.
- */
+// The JDK has no seed-to-public-key API, so the generator is fed a SecureRandom that returns the seed.
 internal fun ed25519PublicKey(privateKey: ByteArray): ByteArray {
     val seeded = object : SecureRandom() {
         override fun nextBytes(bytes: ByteArray) { privateKey.copyInto(bytes, endIndex = bytes.size) }
@@ -91,11 +79,10 @@ internal fun ed25519PublicKey(privateKey: ByteArray): ByteArray {
     val generator = KeyPairGenerator.getInstance("Ed25519")
     generator.initialize(NamedParameterSpec.ED25519, seeded)
     val pair = generator.generateKeyPair()
-    check(RawKeys.raw(pair.private.encoded).contentEquals(privateKey)) { "Ed25519: зерно не принято" }
+    check(RawKeys.raw(pair.private.encoded).contentEquals(privateKey)) { "Ed25519: seed not accepted" }
     return RawKeys.raw(pair.public.encoded)
 }
 
-/** Подпись Ed25519 постоянным ключом личности. */
 class JvmSigner(private val privateKey: ByteArray) : Signer {
     override fun sign(data: ByteArray): ByteArray =
         Signature.getInstance("Ed25519").run {
@@ -115,10 +102,7 @@ class JvmSigner(private val privateKey: ByteArray) : Signer {
     }
 }
 
-/**
- * Перевод сырых 32-байтных ключей в объекты JDK и обратно. Кодировки X.509 и PKCS#8
- * для этих кривых — фиксированный префикс плюс сами 32 байта (RFC 8410).
- */
+/** Converts raw 32-byte keys to JDK objects and back; X.509 and PKCS#8 are a fixed prefix plus the key (RFC 8410). */
 private object RawKeys {
     private val X25519_PUBLIC = hexBytes("302a300506032b656e032100")
     private val X25519_PRIVATE = hexBytes("302e020100300506032b656e04220420")
@@ -147,7 +131,6 @@ private object RawKeys {
         return KeyFactory.getInstance("Ed25519").generatePublic(X509EncodedKeySpec(ED25519_PUBLIC + raw))
     }
 
-    /** Последние 32 байта кодировки X.509 или PKCS#8 — сам ключ. */
     fun raw(encoded: ByteArray): ByteArray = encoded.copyOfRange(encoded.size - 32, encoded.size)
 
     private fun hexBytes(s: String) = ByteArray(s.length / 2) { s.substring(it * 2, it * 2 + 2).toInt(16).toByte() }

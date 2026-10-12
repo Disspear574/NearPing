@@ -1,21 +1,11 @@
 #!/usr/bin/env python3
-"""Собирает .deb NearPing из каталога portable-сборки, без dpkg-deb и без Linux.
+"""Builds the NearPing .deb from a portable stage directory, without dpkg-deb or Linux.
 
     tools/build-deb.py <stage> <out.deb> <version>
 
-<stage> — каталог, который готовит tools/package-linux.sh: лаунчер nearping, lib/, jre/.
-Вызывается оттуда же; руками обычно не нужен.
-
-Раскладка пакета:
-    /opt/nearping/           JRE, jar-файлы и лаунчер
-    /usr/bin/nearping        запуск из терминала и из .desktop
-    /usr/share/applications/nearping.desktop
-    /usr/share/icons/hicolor/256x256/apps/nearping.png
-
-Каждый родительский каталог объявляется в data.tar явно и раньше своих файлов:
-в test3 его не было, и dpkg падал на «unable to create …/lib/….dpkg-new».
-Владелец всего — root:root, права нормализуются (0755 каталоги и исполняемые, 0644 прочее).
-Сжатие xz: dpkg понимает его с Debian 6 / Ubuntu 10.04 и жмёт Java заметно лучше gzip.
+Layout: /opt/nearping (JRE, jars, launcher), /usr/bin/nearping, the .desktop entry and the icon.
+Every parent directory is declared in data.tar before its files, or dpkg fails to create them.
+Everything is root:root with normalised modes; xz compresses Java much better than gzip.
 """
 import hashlib
 import io
@@ -45,10 +35,8 @@ BIN = """#!/bin/sh
 exec /opt/nearping/nearping "$@"
 """
 
-# Библиотеки, без которых не поднимается окно AWT/Skia. Имена одинаковые
-# в Debian 12 и Ubuntu 22.04/24.04. Звук: libasound2 в 24.04 переименован в t64.
+# Libraries the AWT/Skia window needs; libasound2 is renamed to t64 in Ubuntu 24.04.
 DEPENDS = "libc6, libx11-6, libxext6, libxrender1, libxtst6, libxi6, libfreetype6, libfontconfig1, libasound2t64 | libasound2"
-# Значок в панели и системные уведомления; без них приложение работает окном.
 RECOMMENDS = "python3-gi, gir1.2-gtk-3.0, gir1.2-ayatanaappindicator3-0.1, libnotify-bin"
 
 
@@ -112,7 +100,7 @@ class DataTar:
                     self.data(f"{base}/{name}", file.read_bytes(), os.access(file, os.X_OK))
             for name in dirnames:
                 if (Path(dirpath) / name).is_symlink():
-                    raise SystemExit(f"символическая ссылка на каталог не поддержана: {dirpath}/{name}")
+                    raise SystemExit(f"directory symlink not supported: {dirpath}/{name}")
 
     def close(self) -> bytes:
         self.tar.close()
@@ -148,7 +136,7 @@ def ar(members: list[tuple[str, bytes]]) -> bytes:
 def main() -> None:
     stage, out, version = Path(sys.argv[1]), Path(sys.argv[2]), sys.argv[3]
     if not (stage / "nearping").is_file() or not (stage / "jre/bin/java").is_file():
-        raise SystemExit(f"{stage}: нет лаунчера или JRE")
+        raise SystemExit(f"{stage}: launcher or JRE missing")
 
     data = DataTar()
     data.data("/opt/nearping/nearping", (stage / "nearping").read_bytes(), executable=True)
@@ -178,7 +166,7 @@ def main() -> None:
         ("control.tar.xz", control_tar(control, "\n".join(data.md5) + "\n")),
         ("data.tar.xz", data_bytes),
     ]))
-    print(f"готово: {out}")
+    print(f"done: {out}")
 
 
 if __name__ == "__main__":
