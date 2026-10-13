@@ -7,17 +7,19 @@ import Observation
 /// Normal call: system notification and a soft sound; respects Do Not Disturb on purpose, only urgent may break focus.
 @MainActor
 @Observable
-final class Notifier {
+package final class Notifier {
+    package init() {}
+
     private let log = Logger(subsystem: "com.disspear574.nearping", category: "notify")
     private let presentation = NotificationPresentation()
     private var centerAvailable = false
-    private(set) var needsPermission = false
-    func refreshPermission() async {
+    package private(set) var needsPermission = false
+    package func refreshPermission() async {
         let settings = await UNUserNotificationCenter.current().notificationSettings()
         centerAvailable = settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional
         needsPermission = !centerAvailable || settings.alertSetting == .disabled
     }
-    func enableNotifications() {
+    package func enableNotifications() {
         Task {
             let settings = await UNUserNotificationCenter.current().notificationSettings()
             if settings.authorizationStatus == .notDetermined { requestPermission() }
@@ -27,7 +29,7 @@ final class Notifier {
         }
     }
 
-    func requestPermission() {
+    package func requestPermission() {
         guard Bundle.main.bundleIdentifier != nil else { return }
         UNUserNotificationCenter.current().delegate = presentation
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { [weak self] granted, error in
@@ -39,7 +41,7 @@ final class Notifier {
         }
     }
 
-    func ordinaryCall(from name: String, playSound: Bool = true) {
+    package func ordinaryCall(from name: String, playSound: Bool = true) {
         Task {
             await refreshPermission()
             if playSound { NSSound(named: NSSound.Name("Ping"))?.play() }
@@ -53,7 +55,7 @@ final class Notifier {
         }
     }
 
-    func pairingRequest(from name: String) {
+    package func pairingRequest(from name: String) {
         Task {
             await refreshPermission()
             guard centerAvailable else { return }

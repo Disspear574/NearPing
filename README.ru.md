@@ -89,8 +89,8 @@ Wi-Fi и некоторые VPN его режут. На Ubuntu **Настрой�
 
 ```mermaid
 flowchart LR
-    Mac["Приложение macOS<br/>SwiftUI · macos/"] --> Core
-    Linux["Приложение Ubuntu<br/>Compose Desktop · linux/"] --> Core
+    Mac["Приложение macOS<br/>SwiftUI · apps/appleApp/"] --> Core
+    Linux["Приложение Ubuntu<br/>Compose Desktop · apps/desktopApp/"] --> Core
     Core["Общее ядро<br/>Kotlin Multiplatform · core/<br/>протокол · рукопожатие · пары · пауза · лимиты"]
     Core -- "Bonjour / mDNS<br/>_nearping._tcp" --> LAN((Локальная сеть))
     Core -- "TCP, сквозное шифрование" --> LAN
@@ -106,10 +106,10 @@ flowchart LR
 
 ```bash
 make test                       # тесты ядра
-make run                        # приложение macOS (сначала скопируйте macos/Signing.xcconfig.example)
+make run                        # приложение macOS (сначала скопируйте config/Signing.xcconfig.example)
 make dmg                        # build/NearPing.dmg, подпись ad hoc
 tools/package-linux.sh release  # releases/release/*.deb и *.tar.xz, собираются на Mac
-./gradlew :linux:run            # приложение Ubuntu на текущей машине
+./gradlew :desktopApp:run       # приложение Ubuntu на текущей машине
 ```
 
 Нужны JDK 21, Xcode и XcodeGen. Правила кода и git: [docs/CONVENTIONS.md](docs/CONVENTIONS.md),

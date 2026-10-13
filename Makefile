@@ -7,14 +7,14 @@ core:
 	./gradlew :core:installXCFramework
 
 project: core
-	cd macos && xcodegen generate
+	cd apps/appleApp && xcodegen generate
 
 build: project
-	cd macos && xcodebuild -project NearPing.xcodeproj -scheme NearPing \
+	cd apps/appleApp && xcodebuild -project NearPing.xcodeproj -scheme NearPing \
 		-configuration Debug -derivedDataPath .build -allowProvisioningUpdates build
 
 run: build
-	open macos/.build/Build/Products/Debug/NearPing.app
+	open apps/appleApp/.build/Build/Products/Debug/NearPing.app
 
 # Ad-hoc signed image with a background, for releases.
 dmg:
@@ -22,4 +22,4 @@ dmg:
 
 clean:
 	./gradlew clean
-	rm -rf macos/.build macos/NearPing.xcodeproj macos/Frameworks build/NearPing.dmg build/dmg
+	rm -rf apps/appleApp/.build apps/appleApp/NearPing.xcodeproj apps/appleApp/NearPingKit/Frameworks build/NearPing.dmg build/dmg

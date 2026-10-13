@@ -17,4 +17,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "NearPing"
 include(":core")
-include(":linux")
+include(":desktopApp")
+project(":desktopApp").projectDir = file("apps/desktopApp")

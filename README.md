@@ -89,8 +89,8 @@ interface when there are several.
 
 ```mermaid
 flowchart LR
-    Mac["macOS app<br/>SwiftUI · macos/"] --> Core
-    Linux["Ubuntu app<br/>Compose Desktop · linux/"] --> Core
+    Mac["macOS app<br/>SwiftUI · apps/appleApp/"] --> Core
+    Linux["Ubuntu app<br/>Compose Desktop · apps/desktopApp/"] --> Core
     Core["Shared core<br/>Kotlin Multiplatform · core/<br/>protocol · handshake · pairing · pause · limits"]
     Core -- "Bonjour / mDNS<br/>_nearping._tcp" --> LAN((Local network))
     Core -- "TCP, end-to-end encrypted" --> LAN
@@ -106,10 +106,10 @@ flowchart LR
 
 ```bash
 make test                       # core tests
-make run                        # macOS app (copy macos/Signing.xcconfig.example first)
+make run                        # macOS app (copy config/Signing.xcconfig.example first)
 make dmg                        # build/NearPing.dmg, ad hoc signed
 tools/package-linux.sh release  # releases/release/*.deb and *.tar.xz, built on a Mac
-./gradlew :linux:run            # Ubuntu app on the current machine
+./gradlew :desktopApp:run       # Ubuntu app on the current machine
 ```
 
 Needs JDK 21, Xcode and XcodeGen. Rules for code and git: [docs/CONVENTIONS.md](docs/CONVENTIONS.md),
@@ -118,8 +118,10 @@ Needs JDK 21, Xcode and XcodeGen. Rules for code and git: [docs/CONVENTIONS.md](
 | Path | What it is |
 |---|---|
 | `core/` | Shared Kotlin core: protocol, crypto interfaces, Engine; macOS XCFramework and JVM |
-| `macos/` | SwiftUI menu bar app, XcodeGen project in `macos/project.yml` |
-| `linux/` | Compose Desktop app; tray and screen edges are small GTK helpers |
+| `apps/appleApp/` | macOS app: XcodeGen `project.yml`, the `App/` target (entry point, assets, strings) |
+| `apps/appleApp/NearPingKit/` | All Swift code as one package: `NearPingPlatform` (crypto, keys, network, notifications) ← `NearPingUI` (screens, design system, runtime) |
+| `apps/desktopApp/` | Compose Desktop app for Ubuntu; tray and screen edges are small GTK helpers |
+| `config/` | Signing settings; the local file is ignored |
 | `tools/` | Linux packaging |
 | `scripts/` | DMG and project checks |
 
