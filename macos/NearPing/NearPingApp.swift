@@ -98,6 +98,8 @@ private struct PopoverView: View {
                     runtime.forget(row)
                     contactToRemove = nil
                 }
+                // The popup sets a primary foreground for everything, which hides the destructive red.
+                .foregroundStyle(Tokens.Palette.urgent)
                 .fixedSize()
             }
             .padding(.top, Tokens.Space.xs)
@@ -240,9 +242,9 @@ private struct PopoverView: View {
                 Button(String(localized: "Until tomorrow")) { runtime.pause(minutes: Self.minutesUntilTomorrowMorning()) }
             } label: {
                 Label(String(localized: "Pause"), systemImage: "pause.fill")
-                    .font(Tokens.Font.caption)
             }
-            .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
+            // A borderless menu ignores the label font; the control size sets its text size.
+            .menuStyle(.borderlessButton).menuIndicator(.hidden).controlSize(.small).fixedSize()
         }
     }
 
