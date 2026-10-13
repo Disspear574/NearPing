@@ -6,7 +6,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 label="${1:?give a build label, for example test15, or release}"
-version="$(sed -n 's/.*packageVersion = "\(.*\)".*/\1/p' linux/build.gradle.kts)"
+version="$(sed -n 's/.*packageVersion = "\(.*\)".*/\1/p' apps/desktopApp/build.gradle.kts)"
 arch="x64"
 jdk_version="21.0.12.1"
 jdk_url="https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.12.1%2B1/OpenJDK21U-jdk_x64_linux_hotspot_21.0.12.1_1.tar.gz"
@@ -25,7 +25,7 @@ else
 fi
 stage="$out/$name"
 
-./gradlew :linux:portableLibs -PlinuxTarget="$arch" -q
+./gradlew :desktopApp:portableLibs -PlinuxTarget="$arch" -q
 
 host_jdk="${HOST_JDK:-$(/usr/libexec/java_home -v 21)}"
 host_version="$("$host_jdk/bin/jlink" --version)"
@@ -47,7 +47,7 @@ if [ ! -d "$linux_jdk/jmods" ]; then
 fi
 
 rm -rf "$stage"; mkdir -p "$stage/lib"
-cp linux/build/portable/lib/*.jar "$stage/lib/"
+cp apps/desktopApp/build/portable/lib/*.jar "$stage/lib/"
 python3 tools/store-jars.py "$stage/lib"   # xz packs uncompressed jars twice as well
 "$host_jdk/bin/jlink" --module-path "$linux_jdk/jmods" --add-modules "$modules" \
   --include-locales=en,ru --strip-debug --no-header-files --no-man-pages \

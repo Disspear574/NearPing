@@ -5,10 +5,10 @@ cd "$(dirname "$0")/.."
 
 make project >/dev/null
 # Ad hoc on purpose: a published image never carries a signing team.
-( cd macos && xcodebuild -project NearPing.xcodeproj -scheme NearPing -configuration Release \
+( cd apps/appleApp && xcodebuild -project NearPing.xcodeproj -scheme NearPing -configuration Release \
     -derivedDataPath .build CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= build -quiet )
-APP=macos/.build/Build/Products/Release/NearPing.app
-ICON=macos/NearPing/Assets.xcassets/AppIcon.appiconset/icon-256@1x.png
+APP=apps/appleApp/.build/Build/Products/Release/NearPing.app
+ICON=apps/appleApp/App/Assets.xcassets/AppIcon.appiconset/icon-256@1x.png
 VOL="NearPing"
 TMP=build/dmg
 OUT=build/NearPing.dmg

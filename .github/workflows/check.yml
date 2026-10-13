@@ -28,4 +28,4 @@ jobs:
           java-version: 21
       - uses: gradle/actions/setup-gradle@v5
       - name: Core tests and Linux build
-        run: ./gradlew --console=plain :core:jvmTest :linux:compileKotlin
+        run: ./gradlew --console=plain :core:jvmTest :desktopApp:compileKotlin

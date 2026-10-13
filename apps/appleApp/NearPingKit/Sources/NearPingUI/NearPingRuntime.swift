@@ -2,6 +2,7 @@ import Foundation
 import Observation
 import OSLog
 @preconcurrency import core
+import NearPingPlatform
 
 /// Peer list row: a flat snapshot for the UI.
 struct PeerRow: Identifiable, Equatable {
@@ -23,8 +24,8 @@ struct PeerRow: Identifiable, Equatable {
 /// Connects the core to the UI; the core is touched only from the main thread.
 @MainActor
 @Observable
-final class NearPingRuntime {
-    static let shared = NearPingRuntime()
+public final class NearPingRuntime {
+    public static let shared = NearPingRuntime()
 
     private let log = Logger(subsystem: "com.disspear574.nearping", category: "runtime")
 
@@ -33,7 +34,7 @@ final class NearPingRuntime {
     private(set) var requestedPairings: Set<String> = []
     private(set) var myFingerprint: String = ""
     var myDisplayName: String = ""
-    private(set) var pausedUntil: Date?
+    public private(set) var pausedUntil: Date?
     // Local network permission revoked or not granted: mDNS is silent without it.
     private(set) var localNetworkDenied = false
 
@@ -52,7 +53,7 @@ final class NearPingRuntime {
 
     private var started = false
 
-    func start() {
+    public func start() {
         guard !started else { return }
         started = true
         if ticker == nil {

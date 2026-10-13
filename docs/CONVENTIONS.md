@@ -6,7 +6,7 @@ commits and pull requests are in [GIT.md](GIT.md); the wire format is in [protoc
 ## Language
 
 - Code, comments, logs, docs, commit messages and pull requests are in English.
-- Russian lives only in localization (`macos/NearPing/ru.lproj/`, `linux/.../Strings.kt`) and in
+- Russian lives only in localization (`apps/appleApp/App/ru.lproj/`, `apps/desktopApp/.../Strings.kt`) and in
   test data.
 
 Check: `scripts/check-conventions.sh`.
@@ -43,6 +43,6 @@ Check: `:core:jvmTest` in CI; the CryptoKit vectors test pins the byte format.
 ## Private data
 
 Secrets, signing team ids, machine paths, personal emails and build output never reach git.
-Signing lives in the ignored `macos/Signing.xcconfig`.
+Signing lives in the ignored `config/Signing.xcconfig`.
 
 Check: `scripts/publish-check.py` (privacy workflow, tree and commits).

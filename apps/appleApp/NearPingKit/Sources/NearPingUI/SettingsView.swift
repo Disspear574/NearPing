@@ -1,14 +1,19 @@
 import SwiftUI
 import AppKit
+import NearPingPlatform
 
 /// Settings in their own window, as on macOS; every change applies at once.
-struct SettingsView: View {
+public struct SettingsView: View {
     @Bindable var runtime: NearPingRuntime
     @State private var nameDraft = ""
     @State private var launchAtLogin = LoginItem.isEnabled
     @AppStorage("nearping.appearance") private var appearance = "system"
 
-    var body: some View {
+    public init(runtime: NearPingRuntime) {
+        self.runtime = runtime
+    }
+
+    public var body: some View {
         Form {
             Section {
                 TextField(String(localized: "Your name"), text: $nameDraft)

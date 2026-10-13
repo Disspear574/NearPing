@@ -16,7 +16,7 @@ import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-ICON = ROOT / "linux/src/main/resources/nearping.png"
+ICON = ROOT / "apps/desktopApp/src/main/resources/nearping.png"
 MAIN_CLASS = "com.disspear574.nearping.linux.MainKt"
 
 DESKTOP = f"""[Desktop Entry]

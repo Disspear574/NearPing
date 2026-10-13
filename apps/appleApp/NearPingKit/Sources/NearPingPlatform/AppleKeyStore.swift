@@ -5,8 +5,8 @@ import OSLog
 @preconcurrency import core
 
 /// Apple device identity: a permanent Curve25519 signing key in the Keychain, never exposed.
-final class AppleKeyStore: KeyStore, Signer, @unchecked Sendable {
-    static let shared = AppleKeyStore()
+package final class AppleKeyStore: KeyStore, Signer, @unchecked Sendable {
+    package static let shared = AppleKeyStore()
 
     private static let keychainAccount = "com.disspear574.nearping.identity"
     private static let displayNameKey = "com.disspear574.nearping.displayName"
@@ -15,7 +15,7 @@ final class AppleKeyStore: KeyStore, Signer, @unchecked Sendable {
 
     private static let log = Logger(subsystem: "com.disspear574.nearping", category: "identity")
 
-    init() {
+    package init() {
         let existing = Self.existingKey()
         privateKey = existing ?? Self.createKey()
         let fingerprint = Core.shared.fingerprint(
@@ -31,25 +31,25 @@ final class AppleKeyStore: KeyStore, Signer, @unchecked Sendable {
 
     // MARK: KeyStore
 
-    func loadOrCreate() -> Identity {
+    package func loadOrCreate() -> Identity {
         Identity(
             publicKey: privateKey.publicKey.rawRepresentation.asKotlinByteArray,
             displayName: Self.storedDisplayName()
         )
     }
 
-    func setDisplayName(name: String) {
+    package func setDisplayName(name: String) {
         UserDefaults.standard.set(name, forKey: Self.displayNameKey)
     }
 
     // MARK: Signer
 
-    func sign(data: KotlinByteArray) -> KotlinByteArray {
+    package func sign(data: KotlinByteArray) -> KotlinByteArray {
         let signature = try? privateKey.signature(for: data.asData)
         return (signature ?? Data()).asKotlinByteArray
     }
 
-    func verify(data: KotlinByteArray, signature: KotlinByteArray, publicKey: KotlinByteArray) -> Bool {
+    package func verify(data: KotlinByteArray, signature: KotlinByteArray, publicKey: KotlinByteArray) -> Bool {
         guard let key = try? Curve25519.Signing.PublicKey(rawRepresentation: publicKey.asData) else {
             return false
         }

@@ -5,7 +5,7 @@ import OSLog
 
 /// Where the network delivers events; implemented by the runtime on the main thread.
 @MainActor
-protocol NetworkDelegate: AnyObject {
+package protocol NetworkDelegate: AnyObject {
     func networkFoundPeer(_ peer: Peer, endpointKey: String)
     func networkFoundForeignPeer(_ peer: Peer, protocolVersion: Int32)
     func networkLostPeer(keyHex: String)
@@ -17,7 +17,9 @@ protocol NetworkDelegate: AnyObject {
 }
 
 /// Bonjour and TCP on Network.framework, with its own serial queue because Network.framework calls back on its own queue.
-final class NearPingNetwork: Transport, @unchecked Sendable {
+package final class NearPingNetwork: Transport, @unchecked Sendable {
+    package init() {}
+
     private let log = Logger(subsystem: "com.disspear574.nearping", category: "network")
     private let queue = DispatchQueue(label: "com.disspear574.nearping.network")
 
@@ -27,7 +29,7 @@ final class NearPingNetwork: Transport, @unchecked Sendable {
     private var endpoints: [String: NWEndpoint] = [:]
     private var incomingCounter = 0
 
-    weak var delegate: NetworkDelegate?
+    package weak var delegate: NetworkDelegate?
     private var identity: Identity?
 
     // MARK: Start
@@ -40,7 +42,7 @@ final class NearPingNetwork: Transport, @unchecked Sendable {
         log.notice("\(text, privacy: .public)")
     }
 
-    func start(identity: Identity) {
+    package func start(identity: Identity) {
         debug("start requested")
         queue.async { [self] in
             self.identity = identity
@@ -49,7 +51,7 @@ final class NearPingNetwork: Transport, @unchecked Sendable {
         }
     }
 
-    func retryDiscovery() {
+    package func retryDiscovery() {
         queue.async { [self] in
             listener?.cancel(); browser?.cancel()
             if let identity { startListener(identity: identity) }
@@ -57,7 +59,7 @@ final class NearPingNetwork: Transport, @unchecked Sendable {
         }
     }
 
-    func stop() {
+    package func stop() {
         queue.async { [self] in
             listener?.cancel(); listener = nil
             browser?.cancel(); browser = nil
@@ -193,7 +195,7 @@ final class NearPingNetwork: Transport, @unchecked Sendable {
 
     // MARK: Transport
 
-    func connect(connectionId: String, endpoint: String) {
+    package func connect(connectionId: String, endpoint: String) {
         queue.async { [self] in
             // An outgoing connection id carries the peer key, which finds the address the browser saw.
             let keyHex = connectionId.hasPrefix("out:")
@@ -208,14 +210,14 @@ final class NearPingNetwork: Transport, @unchecked Sendable {
         }
     }
 
-    func send(connectionId: String, bytes: KotlinByteArray) {
+    package func send(connectionId: String, bytes: KotlinByteArray) {
         let data = bytes.asData
         queue.async { [self] in
             connections[connectionId]?.send(content: data, completion: .contentProcessed { _ in })
         }
     }
 
-    func disconnect(connectionId: String) {
+    package func disconnect(connectionId: String) {
         queue.async { [self] in
             connections.removeValue(forKey: connectionId)?.cancel()
         }

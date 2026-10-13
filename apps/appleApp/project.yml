@@ -10,18 +10,22 @@ settings:
     ENABLE_HARDENED_RUNTIME: YES
     MARKETING_VERSION: "0.1.0"
     CURRENT_PROJECT_VERSION: "19"
+packages:
+  NearPingKit:
+    path: NearPingKit
 targets:
   NearPing:
     type: application
     platform: macOS
-    # Signing lives here only, outside git.
+    # Signing lives in config/Signing.xcconfig, which git ignores.
     configFiles:
-      Debug: Signing.xcconfig
-      Release: Signing.xcconfig
+      Debug: ../../config/Signing.xcconfig
+      Release: ../../config/Signing.xcconfig
+    # The target is an entry point: @main, Info.plist, assets, strings and sounds; code is in NearPingKit.
     sources:
-      - path: NearPing
+      - path: App
     info:
-      path: NearPing/Info.plist
+      path: App/Info.plist
       properties:
         LSUIElement: true
         CFBundleName: NearPing
@@ -33,13 +37,12 @@ targets:
           - _nearping._tcp
         ITSAppUsesNonExemptEncryption: true
     dependencies:
-      - framework: Frameworks/core.xcframework
-        embed: false
+      - package: NearPingKit
+        product: NearPingPlatform
+      - package: NearPingKit
+        product: NearPingUI
     settings:
       base:
         PRODUCT_NAME: NearPing
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         PRODUCT_BUNDLE_IDENTIFIER: com.disspear574.nearping
-        FRAMEWORK_SEARCH_PATHS:
-          - "$(inherited)"
-          - "$(PROJECT_DIR)/Frameworks"

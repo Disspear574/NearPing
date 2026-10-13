@@ -33,9 +33,11 @@ kotlin {
     }
 }
 
-// The XCFramework goes where macos/project.yml expects it.
-val installXCFramework by tasks.registering(Copy::class) {
+// The XCFramework goes where the NearPingKit package expects it.
+// Copy turns the framework's Versions symlinks into folders, which SwiftPM rejects; ditto keeps them.
+val installXCFramework by tasks.registering(Exec::class) {
     dependsOn("assembleCoreReleaseXCFramework")
-    from(layout.buildDirectory.dir("XCFrameworks/release"))
-    into(rootProject.layout.projectDirectory.dir("macos/Frameworks"))
+    val source = layout.buildDirectory.dir("XCFrameworks/release/core.xcframework").get().asFile.path
+    val target = rootProject.layout.projectDirectory.dir("apps/appleApp/NearPingKit/Frameworks/core.xcframework").asFile.path
+    commandLine("sh", "-c", "rm -rf \"$1\" && ditto \"$0\" \"$1\"", source, target)
 }

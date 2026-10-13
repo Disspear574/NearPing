@@ -3,14 +3,16 @@ import CryptoKit
 @preconcurrency import core
 
 /// CryptoKit crypto; stateless, so safe from any thread.
-final class AppleCrypto: Crypto, @unchecked Sendable {
-    func randomBytes(count: Int32) -> KotlinByteArray {
+package final class AppleCrypto: Crypto, @unchecked Sendable {
+    package init() {}
+
+    package func randomBytes(count: Int32) -> KotlinByteArray {
         var bytes = [UInt8](repeating: 0, count: Int(count))
         _ = SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes)
         return Data(bytes).asKotlinByteArray
     }
 
-    func createEphemeralKeyPair() -> EphemeralKeyPair {
+    package func createEphemeralKeyPair() -> EphemeralKeyPair {
         let key = Curve25519.KeyAgreement.PrivateKey()
         return EphemeralKeyPair(
             privateKey: key.rawRepresentation.asKotlinByteArray,
@@ -18,7 +20,7 @@ final class AppleCrypto: Crypto, @unchecked Sendable {
         )
     }
 
-    func sharedSecret(privateKey: KotlinByteArray, peerPublicKey: KotlinByteArray) -> KotlinByteArray {
+    package func sharedSecret(privateKey: KotlinByteArray, peerPublicKey: KotlinByteArray) -> KotlinByteArray {
         guard let mine = try? Curve25519.KeyAgreement.PrivateKey(rawRepresentation: privateKey.asData),
               let theirs = try? Curve25519.KeyAgreement.PublicKey(rawRepresentation: peerPublicKey.asData),
               let shared = try? mine.sharedSecretFromKeyAgreement(with: theirs) else {
@@ -27,7 +29,7 @@ final class AppleCrypto: Crypto, @unchecked Sendable {
         return shared.withUnsafeBytes { Data($0) }.asKotlinByteArray
     }
 
-    func deriveSessionKey(sharedSecret: KotlinByteArray, salt: KotlinByteArray) -> KotlinByteArray {
+    package func deriveSessionKey(sharedSecret: KotlinByteArray, salt: KotlinByteArray) -> KotlinByteArray {
         let key = HKDF<SHA256>.deriveKey(
             inputKeyMaterial: SymmetricKey(data: sharedSecret.asData),
             salt: salt.asData,
@@ -37,7 +39,7 @@ final class AppleCrypto: Crypto, @unchecked Sendable {
         return key.withUnsafeBytes { Data($0) }.asKotlinByteArray
     }
 
-    func seal(key: KotlinByteArray, plaintext: KotlinByteArray) -> KotlinByteArray {
+    package func seal(key: KotlinByteArray, plaintext: KotlinByteArray) -> KotlinByteArray {
         let symmetric = SymmetricKey(data: key.asData)
         guard let box = try? ChaChaPoly.seal(plaintext.asData, using: symmetric) else {
             return Data().asKotlinByteArray
@@ -45,7 +47,7 @@ final class AppleCrypto: Crypto, @unchecked Sendable {
         return box.combined.asKotlinByteArray
     }
 
-    func open(key: KotlinByteArray, sealed: KotlinByteArray) -> KotlinByteArray? {
+    package func open(key: KotlinByteArray, sealed: KotlinByteArray) -> KotlinByteArray? {
         let symmetric = SymmetricKey(data: key.asData)
         guard let box = try? ChaChaPoly.SealedBox(combined: sealed.asData),
               let plaintext = try? ChaChaPoly.open(box, using: symmetric) else {
@@ -56,6 +58,8 @@ final class AppleCrypto: Crypto, @unchecked Sendable {
 }
 
 /// System clock behind an interface so core tests can move time by hand.
-final class SystemClock: Clock, @unchecked Sendable {
-    func nowEpochSeconds() -> Int64 { Int64(Date().timeIntervalSince1970) }
+package final class SystemClock: Clock, @unchecked Sendable {
+    package init() {}
+
+    package func nowEpochSeconds() -> Int64 { Int64(Date().timeIntervalSince1970) }
 }

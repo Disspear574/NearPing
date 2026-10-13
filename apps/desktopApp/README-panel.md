@@ -6,4 +6,4 @@ Ubuntu needs an enabled AppIndicator/legacy-tray extension and XWayland. No exte
 
 Dependencies: python3, python3-gi, gir1.2-gtk-3.0, gir1.2-ayatanaappindicator3-0.1, libnotify-bin; xwayland and gnome-shell-extension-appindicator are recommended.
 
-`python3 linux/src/test/python/test_panel_indicator.py` checks activation, fallback, host loss/recovery, and parent-pipe cleanup with GTK doubles. Real Ubuntu/XWayland focus and panel placement need device validation.
+`python3 apps/desktopApp/src/test/python/test_panel_indicator.py` checks activation, fallback, host loss/recovery, and parent-pipe cleanup with GTK doubles. Real Ubuntu/XWayland focus and panel placement need device validation.
