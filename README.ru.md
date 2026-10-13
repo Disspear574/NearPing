@@ -4,12 +4,8 @@
   <p><b>Позвать коллегу в наушниках — по локальной сети.</b></p>
   <p><a href="README.md">English</a> · Русский</p>
 
-  <a href="https://github.com/Disspear574/NearPing/releases/latest/download/NearPing.dmg">
-    <img src="https://img.shields.io/badge/%D0%A1%D0%BA%D0%B0%D1%87%D0%B0%D1%82%D1%8C-NearPing.dmg-4e5a40?style=for-the-badge&logo=apple&logoColor=white" alt="Скачать NearPing.dmg">
-  </a>
-  <a href="https://github.com/Disspear574/NearPing/releases/latest/download/nearping_amd64.deb">
-    <img src="https://img.shields.io/badge/%D0%A1%D0%BA%D0%B0%D1%87%D0%B0%D1%82%D1%8C-nearping__amd64.deb-4e5a40?style=for-the-badge&logo=ubuntu&logoColor=white" alt="Скачать nearping_amd64.deb">
-  </a>
+  <a href="https://github.com/Disspear574/NearPing/releases/latest/download/NearPing.dmg"><img src="https://img.shields.io/badge/%D0%A1%D0%BA%D0%B0%D1%87%D0%B0%D1%82%D1%8C-NearPing.dmg-4e5a40?style=for-the-badge&logo=apple&logoColor=white" alt="Скачать NearPing.dmg"></a>
+  <a href="https://github.com/Disspear574/NearPing/releases/latest/download/nearping_amd64.deb"><img src="https://img.shields.io/badge/%D0%A1%D0%BA%D0%B0%D1%87%D0%B0%D1%82%D1%8C-nearping__amd64.deb-4e5a40?style=for-the-badge&logo=ubuntu&logoColor=white" alt="Скачать nearping_amd64.deb"></a>
   <br><br>
   <a href="https://github.com/Disspear574/NearPing/releases/latest"><img src="https://img.shields.io/github/v/release/Disspear574/NearPing?style=flat-square&color=4e5a40" alt="Последний релиз"></a>
   <img src="https://img.shields.io/badge/macOS-26%2B-111111?style=flat-square&logo=apple" alt="macOS 26 и новее">
