@@ -39,7 +39,7 @@ compose.desktop {
             // .deb and AppImage build only on Linux: jpackage packages for the host system.
             targetFormats(TargetFormat.Deb, TargetFormat.AppImage, TargetFormat.Dmg)
             packageName = "nearping"
-            packageVersion = "0.1.0"
+            packageVersion = "0.1.1"
             description = "Call a colleague who is wearing headphones"
             vendor = "disspear574"
             linux {
