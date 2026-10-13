@@ -54,7 +54,9 @@ struct UrgentBannerView: View {
             }
             .frame(height: 3)
         }
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .background(.regularMaterial)
+        // The progress bar sits at the bottom edge and must follow the rounded corners.
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .stroke(Color.primary.opacity(0.12), lineWidth: 0.5)
