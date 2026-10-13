@@ -5,8 +5,7 @@
 "Add" = "Add";
 "Appearance" = "Appearance";
 "Available" = "Available";
-"Back" = "Back";
-"CONTACTS" = "CONTACTS";
+"Contacts" = "Contacts";
 "Cancel" = "Cancel";
 "Contact actions" = "Contact actions";
 "Dark" = "Dark";
@@ -17,21 +16,19 @@
 "Hold ! for an urgent call" = "Hold ! for an urgent call";
 "Hold for an urgent call" = "Hold for an urgent call";
 "Light" = "Light";
-"NEARBY" = "NEARBY";
+"Nearby" = "Nearby";
 "NearPing cannot see anyone until you allow it in System Settings → Privacy & Security → Local Network." = "NearPing cannot see anyone until you allow it in System Settings → Privacy & Security → Local Network.";
 "No local network access" = "No local network access";
 "Nobody else on this network yet. Open NearPing on another device." = "Nobody else on this network yet. Open NearPing on another device.";
 "Open Settings" = "Open Settings";
-"PAIRING REQUESTS" = "PAIRING REQUESTS";
+"Pairing requests" = "Pairing requests";
 "Pairing request" = "Pairing request";
 "Pause" = "Pause";
 "Paused" = "Paused";
 "Ping" = "Ping";
-"Quit" = "Quit";
 "Remove contact" = "Remove contact";
 "Remove contact?" = "Remove contact?";
 "Resume" = "Resume";
-"Save" = "Save";
 "Send a normal call" = "Send a normal call";
 "Settings" = "Settings";
 "Shown to people on your local network." = "Shown to people on your local network.";
@@ -63,10 +60,7 @@
 
 "Enable notifications" = "Enable notifications";
 
-"Pause duration" = "Pause duration";
-
-"Minutes" = "Minutes";
-
-"From 1 minute to 7 days" = "From 1 minute to 7 days";
-
 "Too many pings. If urgent, use Urgent Ping in the contact menu." = "Too many pings. If urgent, use Urgent Ping in the contact menu.";
+"Settings…" = "Settings…";
+"Quit NearPing" = "Quit NearPing";
+"Fingerprint" = "Fingerprint";

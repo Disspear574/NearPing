@@ -40,17 +40,16 @@ struct NearPingApp: App {
             }
         }
         .menuBarExtraStyle(.window)
+
+        Settings {
+            SettingsView(runtime: runtime)
+        }
     }
 }
 
 private struct PopoverView: View {
     @Bindable var runtime: NearPingRuntime
-    @State private var nameDraft: String = ""
-    @State private var showingSettings = false
-    @State private var showingPause = false
-    @State private var pauseMinutes = "30"
     @State private var contactToRemove: PeerRow?
-    @State private var launchAtLogin = LoginItem.isEnabled
     @AppStorage("nearping.appearance") private var appearance = "system"
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -63,10 +62,8 @@ private struct PopoverView: View {
             if let row = contactToRemove {
                 removeContactScreen(row)
                     .transition(.opacity)
-            } else if showingSettings {
-                settingsScreen.transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .move(edge: .trailing).combined(with: .opacity)))
             } else {
-                contactsScreen.transition(.asymmetric(insertion: .move(edge: .leading).combined(with: .opacity), removal: .move(edge: .leading).combined(with: .opacity)))
+                contactsScreen
             }
         }
         .frame(width: Tokens.Metric.popoverWidth)
@@ -74,24 +71,17 @@ private struct PopoverView: View {
         .background(Tokens.Palette.background)
         .foregroundStyle(Tokens.Palette.primary)
         .tint(Tokens.Palette.accent)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
         .preferredColorScheme(selectedScheme)
-        .onAppear { applyAppearance(); runtime.refreshPermissions() }
+        .onAppear { Appearance.apply(appearance); runtime.refreshPermissions() }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in runtime.refreshPermissions() }
-        .onChange(of: appearance) { _, _ in applyAppearance() }
-        .animation(reduceMotion ? nil : .easeInOut(duration: 0.19), value: showingSettings)
+        .onChange(of: appearance) { _, value in Appearance.apply(value) }
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.15), value: contactToRemove?.id)
         .onDisappear { contactToRemove = nil }
     }
 
     // Same MenuBarExtra window: a separate confirmation panel can dismiss its parent.
     private func removeContactScreen(_ row: PeerRow) -> some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Button { contactToRemove = nil } label: {
-                Label(String(localized: "Back"), systemImage: "chevron.left")
-            }
-            .buttonStyle(.plain)
-            .foregroundStyle(Tokens.Palette.accent)
+        VStack(alignment: .leading, spacing: Tokens.Space.m) {
             Text(String(localized: "Remove contact?")).font(Tokens.Font.nameStrong)
             Text(row.displayName).font(Tokens.Font.name)
                 .lineLimit(2).truncationMode(.tail)
@@ -99,45 +89,36 @@ private struct PopoverView: View {
                 .font(Tokens.Font.caption)
                 .foregroundStyle(Tokens.Palette.secondary)
                 .fixedSize(horizontal: false, vertical: true)
-            HStack {
+            // macOS order: both buttons on the right; the destructive one is never the default.
+            HStack(spacing: Tokens.Space.s) {
+                Spacer(minLength: 0)
                 Button(String(localized: "Cancel")) { contactToRemove = nil }
-                    .buttonStyle(.bordered)
-                Spacer(minLength: 8)
+                    .keyboardShortcut(.cancelAction)
                 Button(String(localized: "Remove contact"), role: .destructive) {
                     runtime.forget(row)
                     contactToRemove = nil
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(Tokens.Palette.urgentFill)
                 .fixedSize()
             }
+            .padding(.top, Tokens.Space.xs)
         }
-        .padding(16)
-        .onExitCommand { contactToRemove = nil }
-    }
-
-    private func applyAppearance() {
-        // MenuBarExtra is an AppKit window whose NSColor palette ignores preferredColorScheme; nil restores system tracking.
-        NSApp.appearance = appearance == "dark" ? NSAppearance(named: .darkAqua)
-            : appearance == "light" ? NSAppearance(named: .aqua) : nil
+        .padding(Tokens.Space.edge)
     }
 
     private var contactsScreen: some View {
         VStack(alignment: .leading, spacing: 0) {
             header
-            Rectangle().fill(Tokens.Palette.separator).frame(height: 1).padding(.horizontal, 12)
-
-
+            Divider().padding(.horizontal, Tokens.Space.edge)
 
             if !runtime.pendingRequests.isEmpty {
-                section(String(localized: "PAIRING REQUESTS"))
+                section(String(localized: "Pairing requests"))
                 ForEach(runtime.pendingRequests) { row in
                     requestRow(row)
                 }
             }
 
             if !contacts.isEmpty {
-                section(String(localized: "CONTACTS"))
+                section(String(localized: "Contacts"))
                 ForEach(contacts) { row in
                     PeerRowView(
                         row: row,
@@ -145,39 +126,40 @@ private struct PopoverView: View {
                         onUrgent: { runtime.call(row, urgent: true) },
                         onRemove: { contactToRemove = row }
                     )
-                    .padding(.horizontal, 8)
+                    .padding(.horizontal, Tokens.Space.s)
                 }
             }
 
-            section(String(localized: "NEARBY"))
+            section(String(localized: "Nearby"))
             if nearby.isEmpty {
                 Text(String(localized: "Nobody else on this network yet. Open NearPing on another device."))
                     .font(Tokens.Font.caption)
                     .foregroundStyle(Tokens.Palette.secondary)
                     .fixedSize(horizontal: false, vertical: true)
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 6)
+                    .padding(.horizontal, Tokens.Space.edge)
+                    .padding(.bottom, Tokens.Space.xs)
             } else {
                 ForEach(nearby) { row in
                     nearbyRow(row)
                 }
             }
 
-            Rectangle().fill(Tokens.Palette.separator).frame(height: 1).padding(.horizontal, 12).padding(.top, 8)
+            Divider().padding(.horizontal, Tokens.Space.edge).padding(.top, Tokens.Space.s)
             if runtime.localNetworkDenied { localNetworkWarning }
             if runtime.notifier.needsPermission {
-                VStack(alignment: .leading, spacing: 6) {
+                VStack(alignment: .leading, spacing: Tokens.Space.xs) {
                     Text(String(localized: "Notifications are off")).font(Tokens.Font.name)
                     Button(String(localized: "Enable notifications")) { runtime.notifier.enableNotifications() }
-                        .controlSize(.small)
-                }.padding(16)
+                        .padding(.top, Tokens.Space.xs)
+                }
+                .padding(.horizontal, Tokens.Space.edge)
+                .padding(.vertical, Tokens.Space.s)
             }
             footer
         }
         .frame(width: Tokens.Metric.popoverWidth)
         // Solid background: on a material, contrast depends on the wallpaper.
         .background(Tokens.Palette.background)
-        .onAppear { nameDraft = runtime.myDisplayName }
     }
 
     private var contacts: [PeerRow] { runtime.peers.filter(\.isTrusted) }
@@ -189,7 +171,7 @@ private struct PopoverView: View {
     }
 
     private var localNetworkWarning: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: Tokens.Space.xs) {
             Text(String(localized: "No local network access"))
                 .font(Tokens.Font.name)
                 .foregroundStyle(Tokens.Palette.urgent)
@@ -202,119 +184,87 @@ private struct PopoverView: View {
                     NSWorkspace.shared.open(url)
                 }
             }
-            .controlSize(.small)
-            .padding(.top, 2)
+            .padding(.top, Tokens.Space.xs)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
+        .padding(.horizontal, Tokens.Space.edge)
+        .padding(.vertical, Tokens.Space.s)
     }
 
     private var header: some View {
-        VStack(spacing: 14) {
-            HStack(spacing: 8) {
+        VStack(spacing: Tokens.Space.m) {
+            HStack(spacing: Tokens.Space.s) {
                 Image("NearPingMark").resizable().scaledToFit().frame(width: 22, height: 22)
                     .foregroundStyle(Tokens.Palette.accent)
-                Text(verbatim: "NearPing").font(.system(size: 16, weight: .semibold))
-                Spacer(minLength: 8)
+                Text(verbatim: "NearPing").font(.title3.weight(.semibold))
+                Spacer(minLength: Tokens.Space.s)
                 Text(runtime.myDisplayName).font(Tokens.Font.caption)
                     .foregroundStyle(Tokens.Palette.secondary).lineLimit(1).truncationMode(.tail)
-                Button {
-                    nameDraft = runtime.myDisplayName
-                    showingSettings = true
-                } label: { Image(systemName: "gearshape").frame(width: 24, height: 24) }
-                .buttonStyle(.plain)
+                // Settings and Quit live in a menu, as in system menu bar extras.
+                Menu {
+                    SettingsLink { Text(String(localized: "Settings…")) }
+                        .keyboardShortcut(",", modifiers: .command)
+                    Divider()
+                    Button(String(localized: "Quit NearPing")) { NSApplication.shared.terminate(nil) }
+                        .keyboardShortcut("q", modifiers: .command)
+                } label: {
+                    Image(systemName: "gearshape").frame(width: 28, height: 28).contentShape(Rectangle())
+                }
+                .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
                 .accessibilityLabel(String(localized: "Settings"))
             }
             HStack {
                 Label(runtime.pausedUntil == nil ? String(localized: "Available") : String(localized: "Paused"), systemImage: runtime.pausedUntil == nil ? "circle.fill" : "pause.fill")
                     .font(Tokens.Font.caption).foregroundStyle(Tokens.Palette.secondary)
                 Spacer()
-                Button {
-                    if runtime.pausedUntil != nil { runtime.pause(minutes: nil) }
-                    else { showingPause = true }
-                } label: {
-                    Label(runtime.pausedUntil == nil ? String(localized: "Pause") : String(localized: "Resume"), systemImage: "pause.fill")
-                        .font(Tokens.Font.caption)
-                }
-                .buttonStyle(.plain).fixedSize()
-                .popover(isPresented: $showingPause) {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text(String(localized: "Pause duration")).font(Tokens.Font.nameStrong)
-                        HStack {
-                            TextField(String(localized: "Minutes"), text: $pauseMinutes).textFieldStyle(.roundedBorder)
-                            Text(String(localized: "Minutes"))
-                        }
-                        Text(String(localized: "From 1 minute to 7 days")).font(Tokens.Font.caption)
-                        Button(String(localized: "Pause")) {
-                            if let minutes = Int(pauseMinutes), (1...10080).contains(minutes) {
-                                runtime.pause(minutes: minutes); showingPause = false
-                            }
-                        }.buttonStyle(.borderedProminent)
-                            .disabled(!(Int(pauseMinutes).map { (1...10080).contains($0) } ?? false))
-                    }.padding(16).frame(width: 230)
-                        .foregroundStyle(Tokens.Palette.primary).background(Tokens.Palette.background)
-                }
+                pauseControl
             }
         }
-        .padding(14)
+        .padding(.horizontal, Tokens.Space.edge)
+        .padding(.vertical, Tokens.Space.m)
     }
 
-    private var settingsScreen: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 18) {
-                Button { showingSettings = false } label: {
-                    Label(String(localized: "Back"), systemImage: "chevron.left")
-                }.buttonStyle(.plain).foregroundStyle(Tokens.Palette.accent)
-                Text(String(localized: "Settings")).font(Tokens.Font.nameStrong)
-                Spacer()
-            }.padding(16)
-            Divider()
-            VStack(alignment: .leading, spacing: 8) {
-                Text(String(localized: "Your name")).font(Tokens.Font.name)
-                TextField(String(localized: "Your name"), text: $nameDraft).textFieldStyle(.roundedBorder)
-                Text(String(localized: "Shown to people on your local network."))
-                    .font(Tokens.Font.caption).foregroundStyle(Tokens.Palette.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-                Text(String(localized: "Appearance")).font(Tokens.Font.name).padding(.top, 18)
-                Picker(String(localized: "Appearance"), selection: $appearance) {
-                    Text(String(localized: "System")).tag("system")
-                    Text(String(localized: "Light")).tag("light")
-                    Text(String(localized: "Dark")).tag("dark")
-                }.labelsHidden().pickerStyle(.segmented)
-                Toggle(String(localized: "Open at login"), isOn: $launchAtLogin)
-                    .padding(.top, 18)
-                    .onChange(of: launchAtLogin) { _, enabled in
-                        LoginItem.set(enabled)
-                        launchAtLogin = LoginItem.isEnabled
-                    }
-                Text(verbatim: runtime.myFingerprint).font(.system(size: 11, design: .monospaced))
-                    .foregroundStyle(Tokens.Palette.secondary).textSelection(.enabled).padding(.top, 18)
-                HStack {
-                    Spacer()
-                    Button(String(localized: "Save")) {
-                        runtime.rename(to: nameDraft)
-                        showingSettings = false
-                    }.buttonStyle(.borderedProminent)
-                        .disabled(nameDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                }.padding(.top, 18)
-            }.padding(16)
+    // Presets as in Focus: a free minutes field asked the person to do arithmetic.
+    @ViewBuilder private var pauseControl: some View {
+        if runtime.pausedUntil != nil {
+            Button { runtime.pause(minutes: nil) } label: {
+                Label(String(localized: "Resume"), systemImage: "play.fill")
+                    .font(Tokens.Font.caption)
+                    .padding(.vertical, Tokens.Space.xs)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain).fixedSize()
+        } else {
+            Menu {
+                Button(String(localized: "15 minutes")) { runtime.pause(minutes: 15) }
+                Button(String(localized: "1 hour")) { runtime.pause(minutes: 60) }
+                Button(String(localized: "Until tomorrow")) { runtime.pause(minutes: Self.minutesUntilTomorrowMorning()) }
+            } label: {
+                Label(String(localized: "Pause"), systemImage: "pause.fill")
+                    .font(Tokens.Font.caption)
+            }
+            .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
         }
-        .onExitCommand { showingSettings = false }
+    }
+
+    private static func minutesUntilTomorrowMorning(now: Date = .now) -> Int {
+        let calendar = Calendar.current
+        let tomorrow = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: now)) ?? now.addingTimeInterval(86_400)
+        let morning = calendar.date(bySettingHour: 9, minute: 0, second: 0, of: tomorrow) ?? tomorrow
+        return max(1, Int(morning.timeIntervalSince(now) / 60))
     }
 
     private func section(_ title: String) -> some View {
         Text(title)
             .font(Tokens.Font.section)
-            .kerning(0.5)
-            .foregroundStyle(Tokens.Palette.primary.opacity(0.65))
-            .padding(.horizontal, 16)
-            .padding(.top, 11)
-            .padding(.bottom, 4)
+            .foregroundStyle(Tokens.Palette.secondary)
+            .padding(.horizontal, Tokens.Space.edge)
+            .padding(.top, Tokens.Space.m)
+            .padding(.bottom, Tokens.Space.xs)
             .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func requestRow(_ row: PeerRow) -> some View {
-        HStack(spacing: 8) {
+        HStack(spacing: Tokens.Space.s) {
             VStack(alignment: .leading, spacing: 1) {
                 Text(row.displayName)
                     .font(Tokens.Font.name)
@@ -331,21 +281,19 @@ private struct PopoverView: View {
             Button(String(localized: "Accept")) { runtime.acceptPairing(row) }
                 .buttonStyle(.borderedProminent)
                 .tint(Tokens.Palette.accent)
-                .controlSize(.small)
                 .fixedSize(horizontal: true, vertical: true)
                 .layoutPriority(1)
             Button(String(localized: "Decline")) { runtime.rejectPairing(row) }
                 .buttonStyle(.bordered)
-                .controlSize(.small)
                 .fixedSize(horizontal: true, vertical: true)
                 .layoutPriority(1)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 3)
+        .padding(.horizontal, Tokens.Space.edge)
+        .padding(.vertical, Tokens.Space.xs)
     }
 
     private func nearbyRow(_ row: PeerRow) -> some View {
-        HStack(spacing: 8) {
+        HStack(spacing: Tokens.Space.s) {
             VStack(alignment: .leading, spacing: 1) {
                 Text(row.displayName)
                     .font(Tokens.Font.name)
@@ -363,32 +311,23 @@ private struct PopoverView: View {
                 Button(String(localized: "Add")) { runtime.requestPairing(row) }
                     .buttonStyle(.borderedProminent)
                     .tint(Tokens.Palette.accent)
-                    .controlSize(.small)
-                .fixedSize(horizontal: true, vertical: true)
-                .layoutPriority(1)
+                    .fixedSize(horizontal: true, vertical: true)
+                    .layoutPriority(1)
                     .disabled(!row.isOnline)
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 3)
+        .padding(.horizontal, Tokens.Space.edge)
+        .padding(.vertical, Tokens.Space.xs)
     }
 
     private var footer: some View {
-        HStack(spacing: 8) {
-            // The hold gesture is not discoverable, so say it in words.
-            Text(String(localized: "Urgent Ping is in the contact menu"))
-                .font(Tokens.Font.caption)
-                .foregroundStyle(Tokens.Palette.secondary)
-                .lineLimit(1)
-                .truncationMode(.tail)
-                .layoutPriority(1)
-            Spacer(minLength: 0)
-            Button(String(localized: "Quit")) { NSApplication.shared.terminate(nil) }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-                .fixedSize()
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 8)
+        // The hold gesture is not discoverable, so say it in words.
+        Text(String(localized: "Urgent Ping is in the contact menu"))
+            .font(Tokens.Font.caption)
+            .foregroundStyle(Tokens.Palette.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, Tokens.Space.edge)
+            .padding(.vertical, Tokens.Space.s)
     }
 }

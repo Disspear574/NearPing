@@ -11,7 +11,7 @@ struct UrgentBannerView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 14) {
+            HStack(spacing: Tokens.Space.m) {
                 Circle()
                     .fill(Color.primary.opacity(0.08))
                     .overlay(Circle().stroke(graphicColor, lineWidth: 2.5))
@@ -24,7 +24,7 @@ struct UrgentBannerView: View {
                 VStack(alignment: .leading, spacing: 3) {
                     // The name is set by the person: length is unbounded but must not break the layout.
                     Text(String(localized: "\(callerName) is calling"))
-                        .font(.system(size: 19, weight: .semibold))
+                        .font(.title2.weight(.semibold))
                         .foregroundStyle(Tokens.Palette.primary)
                         .lineLimit(1)
                         .truncationMode(.tail)
@@ -35,20 +35,17 @@ struct UrgentBannerView: View {
                 }
                 .layoutPriority(1)
 
-                Spacer(minLength: 8)
+                Spacer(minLength: Tokens.Space.s)
 
                 Button(action: onStop) {
                     Text(String(localized: "Stop"))
-                        .font(.system(size: 13, weight: .semibold))
-                        .padding(.horizontal, 18)
-                        .padding(.vertical, 9)
                 }
                 .buttonStyle(.borderedProminent)
+                .controlSize(.large)
                 .tint(isUrgent ? Tokens.Palette.urgentFill : Tokens.Palette.accent)
                 .fixedSize()
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 16)
+            .padding(Tokens.Space.edge)
 
             GeometryReader { geometry in
                 Rectangle()
@@ -76,4 +73,13 @@ struct UrgentBannerView: View {
         isUrgent ? Tokens.Palette.urgentFill : Tokens.Palette.accent
     }
 
+}
+
+#Preview("Banner") {
+    VStack(spacing: Tokens.Space.edge) {
+        UrgentBannerView(callerName: "Anna Petrova", isUrgent: false, totalSeconds: 8, onStop: {})
+        UrgentBannerView(callerName: "A very long display name that must truncate", isUrgent: true, totalSeconds: 8, onStop: {})
+    }
+    .frame(width: 460)
+    .padding(Tokens.Space.edge)
 }

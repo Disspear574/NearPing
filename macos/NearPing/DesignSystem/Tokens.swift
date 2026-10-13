@@ -12,12 +12,20 @@ enum Tokens {
         static let holdSeconds: TimeInterval = 0.9
     }
 
+    /// One spacing scale; `edge` is the single left and right margin of every screen.
+    enum Space {
+        static let xs: CGFloat = 4
+        static let s: CGFloat = 8
+        static let m: CGFloat = 12
+        static let edge: CGFloat = 16
+    }
+
+    // System text styles, so weight and leading follow the platform.
     enum Font {
-        static let name = SwiftUI.Font.system(size: 13, weight: .medium)
-        static let nameStrong = SwiftUI.Font.system(size: 13, weight: .semibold)
-        static let caption = SwiftUI.Font.system(size: 11)
-        static let section = SwiftUI.Font.system(size: 10, weight: .semibold)
-        static let footer = SwiftUI.Font.system(size: 12)
+        static let name = SwiftUI.Font.body.weight(.medium)
+        static let nameStrong = SwiftUI.Font.headline
+        static let caption = SwiftUI.Font.subheadline
+        static let section = SwiftUI.Font.subheadline.weight(.semibold)
     }
 
     enum Palette {
@@ -35,7 +43,6 @@ enum Tokens {
         static let urgent = dynamic(light: 0xA53F32, dark: 0xFF8A70)
         static let urgentFill = dynamic(light: 0xB23A2C, dark: 0xD63A2A)
 
-        static let separator = Color.primary.opacity(0.09)
         static let rowHover = Color.primary.opacity(0.06)
 
         private static func dynamic(light: Int, dark: Int) -> Color {
