@@ -4,12 +4,8 @@
   <p><b>Call a colleague who is wearing headphones — over the local network.</b></p>
   <p>English · <a href="README.ru.md">Русский</a></p>
 
-  <a href="https://github.com/Disspear574/NearPing/releases/latest/download/NearPing.dmg">
-    <img src="https://img.shields.io/badge/Download-NearPing.dmg-4e5a40?style=for-the-badge&logo=apple&logoColor=white" alt="Download NearPing.dmg">
-  </a>
-  <a href="https://github.com/Disspear574/NearPing/releases/latest/download/nearping_amd64.deb">
-    <img src="https://img.shields.io/badge/Download-nearping__amd64.deb-4e5a40?style=for-the-badge&logo=ubuntu&logoColor=white" alt="Download nearping_amd64.deb">
-  </a>
+  <a href="https://github.com/Disspear574/NearPing/releases/latest/download/NearPing.dmg"><img src="https://img.shields.io/badge/Download-NearPing.dmg-4e5a40?style=for-the-badge&logo=apple&logoColor=white" alt="Download NearPing.dmg"></a>
+  <a href="https://github.com/Disspear574/NearPing/releases/latest/download/nearping_amd64.deb"><img src="https://img.shields.io/badge/Download-nearping__amd64.deb-4e5a40?style=for-the-badge&logo=ubuntu&logoColor=white" alt="Download nearping_amd64.deb"></a>
   <br><br>
   <a href="https://github.com/Disspear574/NearPing/releases/latest"><img src="https://img.shields.io/github/v/release/Disspear574/NearPing?style=flat-square&color=4e5a40" alt="Latest release"></a>
   <img src="https://img.shields.io/badge/macOS-26%2B-111111?style=flat-square&logo=apple" alt="macOS 26 or later">
