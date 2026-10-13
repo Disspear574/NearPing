@@ -12,13 +12,13 @@ struct PeerRowView: View {
     private var accent: Color { Tokens.Palette.accent }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-        HStack(spacing: 6) {
+        VStack(alignment: .leading, spacing: Tokens.Space.xs) {
+        HStack(spacing: Tokens.Space.s) {
             RoundedRectangle(cornerRadius: 8)
                 .fill(Tokens.Palette.surface)
                 .overlay(
                     Text(initials)
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(Tokens.Font.section)
                         .foregroundStyle(Tokens.Palette.primary)
                 )
                 .frame(width: Tokens.Metric.avatar, height: Tokens.Metric.avatar)
@@ -48,14 +48,14 @@ struct PeerRowView: View {
                     .disabled(!canUrgent)
                 Divider()
                 Button(String(localized: "Remove contact"), role: .destructive, action: onRemove)
-            } label: { Image(systemName: "ellipsis").font(.system(size: 14, weight: .semibold)).frame(width: 28, height: 30).contentShape(Rectangle()) }
+            } label: { Image(systemName: "ellipsis").fontWeight(.semibold).frame(width: 28, height: 28).contentShape(Rectangle()) }
             .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
             .accessibilityLabel(String(localized: "Contact actions"))
             .popover(isPresented: $showingUrgent) {
-                VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: Tokens.Space.m) {
                     Text(String(localized: "Urgent Ping")).font(Tokens.Font.nameStrong)
                     Text(row.displayName).font(Tokens.Font.name).lineLimit(2).truncationMode(.tail)
-                    HStack(spacing: 12) {
+                    HStack(spacing: Tokens.Space.m) {
                         HoldButton(
                             isEnabled: canUrgent,
                             accessibilityText: String(localized: "Urgent call to \(row.displayName), hold to send")
@@ -68,14 +68,14 @@ struct PeerRowView: View {
                             .font(Tokens.Font.caption).fixedSize(horizontal: false, vertical: true)
                     }
                 }
-                .padding(16).frame(width: 240)
+                .padding(Tokens.Space.edge).frame(width: 240)
                 .foregroundStyle(Tokens.Palette.primary).background(Tokens.Palette.background)
             }
 
             Button(action: onCall) {
+                // A minimum width keeps the button steady while the countdown replaces the word.
                 Text(row.cooldown > 0 ? "\(row.cooldown)s" : String(localized: "Ping"))
-                    .font(.system(size: 13, weight: .semibold))
-                    .frame(width: 62, height: 30)
+                    .frame(minWidth: 40)
             }
             .buttonStyle(.borderedProminent)
             .tint(accent)
@@ -90,8 +90,8 @@ struct PeerRowView: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 5)
+        .padding(.horizontal, Tokens.Space.s)
+        .padding(.vertical, Tokens.Space.xs)
         .background(
             RoundedRectangle(cornerRadius: Tokens.Metric.rowRadius, style: .continuous)
                 // Tinted with a hint of accent rather than gray, so the row reads as live and belonging to this app.
@@ -144,4 +144,16 @@ struct PeerRowView: View {
         let letters = parts.compactMap { $0.first }.map(String.init).joined()
         return letters.isEmpty ? "?" : letters.uppercased()
     }
+}
+
+#Preview("Rows") {
+    VStack(spacing: 0) {
+        PeerRowView(row: PeerRow(id: "1", displayName: "Anna Petrova", fingerprint: "AB12 CD34", isTrusted: true, isOnline: true, pausedUntil: nil), onCall: {}, onUrgent: {}, onRemove: {})
+        PeerRowView(row: PeerRow(id: "2", displayName: "A very long display name that must truncate", fingerprint: "EF56 7890", isTrusted: true, isOnline: true, pausedUntil: nil, cooldown: 12, status: "delivered", statusKind: .good), onCall: {}, onUrgent: {}, onRemove: {})
+        PeerRowView(row: PeerRow(id: "3", displayName: "Ivan", fingerprint: "1122 3344", isTrusted: true, isOnline: true, pausedUntil: .now.addingTimeInterval(3600)), onCall: {}, onUrgent: {}, onRemove: {})
+        PeerRowView(row: PeerRow(id: "4", displayName: "Offline Mac", fingerprint: "5566 7788", isTrusted: true, isOnline: false, pausedUntil: nil, timeoutHint: true), onCall: {}, onUrgent: {}, onRemove: {})
+    }
+    .padding(.horizontal, Tokens.Space.s)
+    .frame(width: Tokens.Metric.popoverWidth)
+    .background(Tokens.Palette.background)
 }
