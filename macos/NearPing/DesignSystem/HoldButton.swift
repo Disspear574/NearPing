@@ -31,6 +31,8 @@ struct HoldButton: View {
         .onHover { hovered = $0 }
         .accessibilityLabel(accessibilityText)
         .accessibilityAddTraits(.isButton)
+        // VoiceOver cannot hold; its activation is already a deliberate double action.
+        .accessibilityAction { fire() }
         .onLongPressGesture(
             minimumDuration: Tokens.Metric.holdSeconds,
             maximumDistance: 20,
@@ -65,4 +67,12 @@ struct HoldButton: View {
         cancel()
         onFire()
     }
+}
+
+#Preview("Hold button") {
+    HStack(spacing: Tokens.Space.m) {
+        HoldButton(isEnabled: true, accessibilityText: "Urgent", onFire: {})
+        HoldButton(isEnabled: false, accessibilityText: "Urgent", onFire: {})
+    }
+    .padding(Tokens.Space.edge)
 }
